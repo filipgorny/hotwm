@@ -1,0 +1,16 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-std=c99",
+      "-O1",
+      "-c",
+      "-o",
+      "hotwm.o",
+      "hotwm.c"
+    ],
+    "directory": "/home/filip/Projects/filipgorny/hotwm",
+    "file": "/home/filip/Projects/filipgorny/hotwm/hotwm.c",
+    "output": "/home/filip/Projects/filipgorny/hotwm/hotwm.o"
+  }
+]
