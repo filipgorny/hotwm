@@ -8,6 +8,7 @@
 
 #include "debug.h"
 #include "hot.h"
+#include "manager.h"
 
 xcb_connection_t *conn;
 xcb_screen_t *screen;
@@ -16,9 +17,15 @@ xcb_generic_event_t *ev;
 
 xcb_drawable_t root;
 
+Manager_session *manager_session;
+
 static void handle_map_request(xcb_window_t window) {
   xcb_map_window(conn, window);
 
+  Manager_window *mw = manager_create_window(manager_session, window);
+  manager_move_window(mw, 40, 300);
+
+  return;
   int vals[4];
 
   vals[0] = 200;
@@ -70,6 +77,8 @@ int main() {
   xcb_flush(conn);
 
   root = screen->root;
+
+  manager_session = manager_start_session();
 
   int values[3];
 
