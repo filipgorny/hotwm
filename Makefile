@@ -17,7 +17,7 @@ install: all
 	chmod 644 $(DESTDIR)$(MANDIR)/man1/hotwm.1
 hotwm: hotwm.o
 	$(CC) $(ALL_LDFLAGS) -o hotwm hotwm.o $(LDLIBS)
-hotwm.o: hotwm.c manager.h
+hotwm.o: hotwm.c manager.h keyboard.h
 clean:
 	rm -f hotwm *.o
 uninstall:

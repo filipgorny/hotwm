@@ -1,14 +1,14 @@
-#include <X11/keysym.h>
+#include "debug.h"
+#include "hot.h"
+#include "keyboard.h"
+#include "manager.h"
+#include <X11/Xutil.h>
 #include <spawn.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xproto.h>
-
-#include "debug.h"
-#include "hot.h"
-#include "manager.h"
 
 xcb_connection_t *conn;
 xcb_screen_t *screen;
@@ -22,25 +22,7 @@ Manager_session *manager_session;
 static void handle_map_request(xcb_window_t window) {
   xcb_map_window(conn, window);
 
-  Manager_window *mw = manager_create_window(manager_session, window);
-  manager_move_window(mw, 40, 300);
-
-  return;
-  int vals[4];
-
-  vals[0] = 200;
-  vals[1] = 200;
-  vals[2] = screen->width_in_pixels / 2;
-  vals[3] = screen->height_in_pixels / 2;
-  vals[4] = 4;
-  xcb_configure_window(conn, window,
-                       XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
-                           XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT |
-                           XCB_CONFIG_WINDOW_BORDER_WIDTH,
-                       vals);
-
-  vals[0] = 0xFFFFFF;
-  xcb_change_window_attributes(conn, window, XCB_CW_BORDER_PIXEL, vals);
+  Manager_window *mw = manager_create_window(window);
 
   xcb_flush(conn);
 }
@@ -48,7 +30,7 @@ static void handle_map_request(xcb_window_t window) {
 static void handle_key_press(xcb_key_press_event_t *event) {
   debug_info_int("Key pressed: %d", event->detail);
 
-  if (event->detail == 36) {
+  if (keyboard_get_keysym(event->detail) == XK_q) {
     hot_run("/usr/bin/st");
   }
 
