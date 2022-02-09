@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 void debug_info(char* str) {
     printf("%s\n", str);
 }

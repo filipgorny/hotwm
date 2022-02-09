@@ -1,5 +1,10 @@
-#include "debug.h"
 #include "hot.h"
+
+#include "config.h"
+
+#include "setting.h"
+
+#include "debug.h"
 #include "keyboard.h"
 #include "manager.h"
 #include <X11/Xutil.h>
@@ -10,6 +15,12 @@
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xproto.h>
 
+#define LENGTH(X) (sizeof(X) / sizeof(X[0]))
+#define CLEANMASK(mask)                                                        \
+  (mask & ~(numlockmask | LockMask) &                                          \
+   (ShiftMask | ControlMask | Mod1Mask | Mod2Mask | Mod3Mask | Mod4Mask |      \
+    Mod5Mask))
+
 xcb_connection_t *conn;
 xcb_screen_t *screen;
 const xcb_setup_t *setup;
@@ -18,6 +29,8 @@ xcb_generic_event_t *ev;
 xcb_drawable_t root;
 
 Manager_session *manager_session;
+
+static unsigned int numlockmask = 0;
 
 static void handle_map_request(xcb_window_t window) {
   xcb_map_window(conn, window);
@@ -30,8 +43,21 @@ static void handle_map_request(xcb_window_t window) {
 static void handle_key_press(xcb_key_press_event_t *event) {
   debug_info_int("Key pressed: %d", event->detail);
 
-  if (keyboard_get_keysym(event->detail) == XK_q) {
-    hot_run("/usr/bin/st");
+  debug_info_int("Key state: %d", event->state);
+
+  xcb_keysym_t keysym = keyboard_get_keysym(event->detail);
+
+  int i;
+
+  for (i = 0; i < LENGTH(keys); i++) {
+    debug_info_int("Key: %d", keys[i].keysym);
+    debug_info_int("State", keys[i].modifiers);
+
+    if (keysym == keys[i].keysym &&
+        CLEANMASK(event->state) == CLEANMASK(keys[i].modifiers)) {
+      keys[i].func(&(keys[i].arg));
+      break;
+    }
   }
 
   xcb_flush(conn);

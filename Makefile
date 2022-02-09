@@ -11,18 +11,18 @@ all: hotwm
 install: all
 	mkdir -p $(DESTDIR)$(BINDIR)
 	mkdir -p $(DESTDIR)$(MANDIR)/man1
-	cp -f hotwm $(DESTDIR)$(BINDIR)
-	cp -f hotwm.1 $(DESTDIR)$(MANDIR)/man1
-	chmod 755 $(DESTDIR)$(BINDIR)/hotwm
-	chmod 644 $(DESTDIR)$(MANDIR)/man1/hotwm.1
-hotwm: hotwm.o
-	$(CC) $(ALL_LDFLAGS) -o hotwm hotwm.o $(LDLIBS)
-hotwm.o: hotwm.c manager.h keyboard.h
+	cp -f main $(DESTDIR)$(BINDIR)
+	cp -f main.1 $(DESTDIR)$(MANDIR)/man1
+	chmod 755 $(DESTDIR)$(BINDIR)/main
+	chmod 644 $(DESTDIR)$(MANDIR)/man1/main.1
+hotwm: main.o
+	$(CC) $(ALL_LDFLAGS) -o hotwm main.o $(LDLIBS)
+main.o: main.c manager.h keyboard.h config.h hot.h
 clean:
-	rm -f hotwm *.o
+	rm -f main *.o
 uninstall:
-	rm -f $(DESTDIR)$(BINDIR)/hotwm
-	rm -f $(DESTDIR)$(MANDIR)/man1/hotwm.1
+	rm -f $(DESTDIR)$(BINDIR)/main
+	rm -f $(DESTDIR)$(MANDIR)/man1/main.1
 .PHONY: all install uninstall clean
 
 

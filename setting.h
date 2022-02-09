@@ -1,5 +1,3 @@
-#include "config.h"
-
 typedef struct {
     int stack_width_percent;
     int gap_width;

@@ -1,5 +1,4 @@
 #include <xcb/xcb.h>
-#include "setting.h"
 
 typedef struct {
     int id;
