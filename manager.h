@@ -47,7 +47,7 @@ typedef struct {
 
 Manager_setting *manager_setting_create();
 Manager_session* manager_start_session();
-Manager_window* manager_create_window(xcb_window_t window);
+Manager_window* manager_create_window(Manager_session* ms, xcb_window_t window);
 void manager_move_window(Manager_window *window, int x, int y);
 void manager_window_update(Manager_window *window); 
 void manager_trigger_key(xcb_keysym_t keysym, uint16_t state);

@@ -43,7 +43,8 @@ Manager_session *manager_start_session() {
   return ms;
 }
 
-Manager_window *manager_create_window(xcb_window_t window) {
+Manager_window *manager_create_window(Manager_session *ms,
+                                      xcb_window_t window) {
   Manager_window *mw = malloc(sizeof(Manager_window));
   mw->id = mw->id++;
   mw->window = window;
@@ -52,7 +53,7 @@ Manager_window *manager_create_window(xcb_window_t window) {
   mw->x = 30;
   mw->y = 20;
 
-  manager_session->window[manager_session->window_count++] = mw;
+  ms->window[ms->window_count++] = mw;
 
   // manager_session->active_window = mw->id;
 

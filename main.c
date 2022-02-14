@@ -24,7 +24,7 @@ static unsigned int numlockmask = 0;
 static void handle_map_request(xcb_window_t window) {
   xcb_map_window(conn, window);
 
-  Manager_window *mw = manager_create_window(window);
+  manager_create_window(manager_session, window);
 
   xcb_flush(conn);
 }
