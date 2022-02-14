@@ -30,13 +30,24 @@ Manager_setting *manager_setting_create() {
   setting->border_color_active = BORDER_COLOR_ACTIVE;
   setting->border_color_inactive = BORDER_COLOR_INACTIVE;
 
-  memcpy(&setting->keys, KEYS, LENGTH(KEYS));
+  int i;
+
+  for (i = 0; i < LENGHT(KEYS); i++) {
+    setting->keys[i] = KEYS[i];
+  };
+  memcpy(setting->keys, KEYS, LENGTH(KEYS));
 
   return setting;
 }
 
-Manager_session *manager_start_session() {
+Manager_session *manager_start_session(xcb_connection_t *conn,
+                                       xcb_screen_t *screen,
+                                       Manager_setting *setting) {
   Manager_session *ms = malloc(sizeof(Manager_session));
+
+  ms->conn = conn;
+  ms->screen = screen;
+
   ms->window_count = 0;
   ms->active_window = 0;
   ms->setting = manager_setting_create();
@@ -55,22 +66,24 @@ Manager_window *manager_create_window(Manager_session *ms,
 
   ms->window[ms->window_count++] = mw;
 
-  // manager_session->active_window = mw->id;
+  ms->active_window = mw->id;
 
-  // manager_window_update(mw);
+  manager_window_update(ms, mw);
 
-  // manager_layout_update();
+  manager_layout_update(manager_session);
 
   return mw;
 }
 
-void manager_move_window(Manager_window *window, int x, int y) {
+void manager_move_window(Manager_session *manager_session,
+                         Manager_window *window, int x, int y) {
   window->x = x;
   window->y = y;
-  manager_window_update(window);
+  manager_window_update(manager_session, window);
 }
 
-void manager_window_update(Manager_window *window) {
+void manager_window_update(Manager_session *manager_session,
+                           Manager_window *window) {
   int vals[5];
 
   vals[0] = window->x + manager_session->setting->gap_width;
@@ -78,7 +91,7 @@ void manager_window_update(Manager_window *window) {
   vals[2] = window->width - manager_session->setting->gap_width * 2;
   vals[3] = window->height - manager_session->setting->gap_width * 2;
   vals[4] = 2;
-  xcb_configure_window(conn, window->window,
+  xcb_configure_window(manager_session->conn, window->window,
                        XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
                            XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT |
                            XCB_CONFIG_WINDOW_BORDER_WIDTH,
@@ -90,24 +103,30 @@ void manager_window_update(Manager_window *window) {
     vals[0] = manager_session->setting->border_color_inactive;
   }
 
-  xcb_change_window_attributes(conn, window->window, XCB_CW_BORDER_PIXEL, vals);
+  xcb_change_window_attributes(manager_session->conn, window->window,
+                               XCB_CW_BORDER_PIXEL, vals);
 
-  xcb_flush(conn);
+  xcb_flush(manager_session->conn);
 }
 
-void manager_trigger_key(xcb_keysym_t keysym, uint16_t state) {
+void manager_trigger_key(Manager_session *manager_session, xcb_keysym_t keysym,
+                         uint16_t state) {
   int i;
   i = 0;
   for (i = 0; i < LENGTH(KEYS); i++) {
-    if (keysym == KEYS[i].keysym &&
-        CLEANMASK(state) == CLEANMASK(KEYS[i].modifiers)) {
-      KEYS[i].func(&(KEYS[i].arg));
+    if (keysym == manager_session->setting->keys[i].keysym &&
+        CLEANMASK(state) ==
+            CLEANMASK(manager_session->setting->keys[i].modifiers)) {
+      manager_session->setting->keys[i].func(
+          &(manager_session->setting->keys[i].arg));
       break;
     }
   }
 }
 
-void manager_layout_update() { layout_stack(); }
+void manager_layout_update(Manager_session *manager_session) {
+  layout_stack(manager_session);
+}
 
 void manager_run(const Manager_arg *arg) {
   int status;

@@ -32,6 +32,8 @@ typedef struct {
 } Manager_window;
 
 typedef struct {
+    xcb_connection_t *conn;
+    xcb_screen_t *screen;
     int window_count;
     int active_window;
     int selected_window_id;
@@ -46,10 +48,10 @@ typedef struct {
 } Manager_layout;
 
 Manager_setting *manager_setting_create();
-Manager_session* manager_start_session();
+Manager_session* manager_start_session(xcb_connection_t *conn, xcb_screen_t *screen, Manager_setting *setting);
 Manager_window* manager_create_window(Manager_session* ms, xcb_window_t window);
-void manager_move_window(Manager_window *window, int x, int y);
-void manager_window_update(Manager_window *window); 
-void manager_trigger_key(xcb_keysym_t keysym, uint16_t state);
-void manager_layout_update(); 
+void manager_move_window(Manager_session* manager_session, Manager_window *window, int x, int y);
+void manager_window_update(Manager_session* manager_session, Manager_window *window); 
+void manager_trigger_key(Manager_session* manager_session, xcb_keysym_t keysym, uint16_t state);
+void manager_layout_update(Manager_session *manager_session);
 void manager_run(const Manager_arg *arg);

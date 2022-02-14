@@ -38,7 +38,7 @@ static void handle_key_press(xcb_key_press_event_t *event) {
 
   int i;
 
-  manager_trigger_key(keysym, event->state);
+  manager_trigger_key(manager_session, keysym, event->state);
   xcb_flush(conn);
 }
 
@@ -65,7 +65,8 @@ int main() {
 
   root = screen->root;
 
-  manager_session = manager_start_session();
+  manager_session =
+      manager_start_session(conn, screen, manager_setting_create());
 
   int values[3];
 
