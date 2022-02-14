@@ -1,12 +1,3 @@
-#include "hot.h"
-
-#include "config.h"
-
-#include "setting.h"
-
-#include "debug.h"
-#include "keyboard.h"
-#include "manager.h"
 #include <X11/Xutil.h>
 #include <spawn.h>
 #include <stdio.h>
@@ -15,20 +6,18 @@
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xproto.h>
 
-#define LENGTH(X) (sizeof(X) / sizeof(X[0]))
-#define CLEANMASK(mask)                                                        \
-  (mask & ~(numlockmask | LockMask) &                                          \
-   (ShiftMask | ControlMask | Mod1Mask | Mod2Mask | Mod3Mask | Mod4Mask |      \
-    Mod5Mask))
+#include "debug.h"
 
-xcb_connection_t *conn;
-xcb_screen_t *screen;
+#include "manager.h"
+
+#include "config.h"
+
+#include "session.h"
+
 const xcb_setup_t *setup;
 xcb_generic_event_t *ev;
 
 xcb_drawable_t root;
-
-Manager_session *manager_session;
 
 static unsigned int numlockmask = 0;
 
@@ -41,25 +30,15 @@ static void handle_map_request(xcb_window_t window) {
 }
 
 static void handle_key_press(xcb_key_press_event_t *event) {
-  debug_info_int("Key pressed: %d", event->detail);
-
-  debug_info_int("Key state: %d", event->state);
-
-  xcb_keysym_t keysym = keyboard_get_keysym(event->detail);
+  xcb_key_symbols_t *keysyms = xcb_key_symbols_alloc(conn);
+  xcb_keysym_t keysym;
+  keysym =
+      (!(keysyms) ? 0 : xcb_key_symbols_get_keysym(keysyms, event->detail, 0));
+  xcb_key_symbols_free(keysyms);
 
   int i;
 
-  for (i = 0; i < LENGTH(keys); i++) {
-    debug_info_int("Key: %d", keys[i].keysym);
-    debug_info_int("State", keys[i].modifiers);
-
-    if (keysym == keys[i].keysym &&
-        CLEANMASK(event->state) == CLEANMASK(keys[i].modifiers)) {
-      keys[i].func(&(keys[i].arg));
-      break;
-    }
-  }
-
+  manager_trigger_key(keysym, event->state);
   xcb_flush(conn);
 }
 
@@ -106,6 +85,7 @@ int main() {
     debug_info("Entering main loop\n");
     xcb_flush(conn);
     ev = xcb_wait_for_event(conn);
+
     switch (ev->response_type) {
     case 5: // Button release event
       handle_button_release(ev);

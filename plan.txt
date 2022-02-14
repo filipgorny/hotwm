@@ -1,0 +1,6 @@
+- poprawienie obecnego kodu do dzialajacego
+- zapis "gdzieś" odnośników do layoutów w postaci stringów
+- layout mono
+    - zmiana aktywnego okna przy pomocy mod j k
+- funkcja zmieniająca layout, przyjmuje stringa z nazwą layoutu
+
