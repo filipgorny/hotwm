@@ -19,7 +19,6 @@ typedef struct {
     int border_color_active;
     int border_color_inactive;
     char* current_layout;
-    Manager_key     keys[];
 } Manager_setting;
 
 typedef struct {

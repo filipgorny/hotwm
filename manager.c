@@ -30,13 +30,6 @@ Manager_setting *manager_setting_create() {
   setting->border_color_active = BORDER_COLOR_ACTIVE;
   setting->border_color_inactive = BORDER_COLOR_INACTIVE;
 
-  int i;
-
-  for (i = 0; i < LENGHT(KEYS); i++) {
-    setting->keys[i] = KEYS[i];
-  };
-  memcpy(setting->keys, KEYS, LENGTH(KEYS));
-
   return setting;
 }
 
@@ -47,10 +40,11 @@ Manager_session *manager_start_session(xcb_connection_t *conn,
 
   ms->conn = conn;
   ms->screen = screen;
-
+	ms->window_count = 0;
   ms->window_count = 0;
   ms->active_window = 0;
   ms->setting = manager_setting_create();
+
   return ms;
 }
 
@@ -64,7 +58,8 @@ Manager_window *manager_create_window(Manager_session *ms,
   mw->x = 30;
   mw->y = 20;
 
-  ms->window[ms->window_count++] = mw;
+  ms->window[ms->window_count] = mw;
+	ms->window_count++;
 
   ms->active_window = mw->id;
 
@@ -84,7 +79,8 @@ void manager_move_window(Manager_session *manager_session,
 
 void manager_window_update(Manager_session *manager_session,
                            Manager_window *window) {
-  int vals[5];
+  /*
+	 * int vals[5];
 
   vals[0] = window->x + manager_session->setting->gap_width;
   vals[1] = window->y + manager_session->setting->gap_width;
@@ -106,19 +102,19 @@ void manager_window_update(Manager_session *manager_session,
   xcb_change_window_attributes(manager_session->conn, window->window,
                                XCB_CW_BORDER_PIXEL, vals);
 
-  xcb_flush(manager_session->conn);
+  xcb_flush(manager_session->conn); */
 }
 
 void manager_trigger_key(Manager_session *manager_session, xcb_keysym_t keysym,
                          uint16_t state) {
   int i;
-  i = 0;
+
   for (i = 0; i < LENGTH(KEYS); i++) {
-    if (keysym == manager_session->setting->keys[i].keysym &&
+    if (keysym == KEYS[i].keysym &&
         CLEANMASK(state) ==
-            CLEANMASK(manager_session->setting->keys[i].modifiers)) {
-      manager_session->setting->keys[i].func(
-          &(manager_session->setting->keys[i].arg));
+            CLEANMASK(KEYS[i].modifiers)) {
+      KEYS[i].func(
+          &(KEYS[i].arg));
       break;
     }
   }
@@ -135,4 +131,33 @@ void manager_run(const Manager_arg *arg) {
     status = system(arg->v);
     exit(0);
   }
+}
+
+void layout_stack(Manager_session *manager_session) {
+	int main_x = 0;
+  int main_y = 0;
+  int main_width = manager_session->screen->width_in_pixels;
+  int main_height = manager_session->screen->height_in_pixels;
+
+  if (manager_session->window_count > 1) {
+    main_x = (int)(manager_session->setting->stack_width_percent * 0.01f *
+                   manager_session->screen->width_in_pixels);
+
+    main_width =
+        manager_session->screen->width_in_pixels - main_x - manager_session->setting->gap_width;
+  }
+
+  int stack_window_index = 0;
+  int i;
+
+	for (i = 0; i < manager_session->window_count; i++) {
+		Manager_window* window = manager_session->window[i];
+
+		printf("%d", window->id);
+
+		if (i == manager_session->active_window) {
+
+			manager_window_update(manager_session, window);
+		}
+	}
 }
