@@ -9,7 +9,7 @@ static const int STACK_WIDTH_PERCENT = 35;
 
 #define MODKEY Mod1Mask
 
-static const Hot_key KEYS[] = {
- { MODKEY,          XK_Return,          manager_run,            {.v = "/bin/st"} }
+static const Key KEYS[] = {
+ { MODKEY,          XK_Return,          spawn,            {.v = "/bin/st"} }
 };
 

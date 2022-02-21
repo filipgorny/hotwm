@@ -2,71 +2,144 @@
 #include <spawn.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <xcb/randr.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xproto.h>
-#include <xcb/randr.h>
 
-#include "config.h"
+static unsigned int numlockmask = 0;
+
+#define LENGTH(X) (sizeof(X) / sizeof(X[0]))
+#define CLEANMASK(mask)                                                        \
+  (mask & ~(numlockmask | LockMask) &                                          \
+   (ShiftMask | ControlMask | Mod1Mask | Mod2Mask | Mod3Mask | Mod4Mask |      \
+    Mod5Mask))
 
 const xcb_setup_t *setup;
 xcb_generic_event_t *ev;
 
 xcb_drawable_t root;
 
+static xcb_connection_t *conn;
+static xcb_screen_t *screen;
+
+typedef struct Client Client;
+struct Client {
+  xcb_window_t window;
+  char name[255];
+  Client *next;
+  int is_floating, is_maximized, is_open;
+};
 
 typedef struct {
-		int id;
-		char name[255]
-		Client next*;
-		int is_floating, is_maximized, is_open;;
-} Client;
+  char name[255];
+  Client *clients;
+} Desktop;
+
+typedef struct Monitor Monitor;
+struct Monitor {
+  int num;
+  int mx, my, mw, mh; // screen size
+  int gapx;
+  Monitor *next;
+  Desktop *desktops;
+  Desktop *current_desktop;
+};
 
 typedef struct {
-	int num;
-	int mx, my, mw, mh; // screen size
-	int gapx;
-	Client *clients;
-	Monitor *next;
-} Monitor;
-
-typedef struct {
-	Monitor* monitors;
+  Monitor *monitors;
+  Client *clients;
+  Monitor *current;
 } Session;
 
+typedef union {
+  int i;
+  unsigned int ui;
+  float f;
+  char *v;
+} Arg;
+
+typedef struct {
+  unsigned int modifiers;
+  xcb_keysym_t keysym;
+  void (*func)(const Arg *);
+  const Arg arg;
+} Key;
+
+static void spawn(const Arg *arg);
+static Session *init_session();
+static Monitor *create_monitor(int num);
+static void trigger_key_bind(xcb_keysym_t keysym, uint16_t state);
+static void handle_map_request(xcb_window_t window);
+static void handle_key_press(xcb_key_press_event_t *event);
+static void handle_button_release(xcb_generic_event_t *ev);
+
+#include "config.h"
 
 Session *session;
 
-void init_session() {
-	session = malloc(sizeof(Session));
-	session->monitors = NULL;
+Session *init_session() {
+  session = malloc(sizeof(Session));
+  session->monitors = malloc(sizeof(Monitor));
+  session->clients = NULL;
+  session->current = session->monitors;
 
-	xcb_
+  return session;
 }
 
-Monitor *create_monitor() {
-	Monitor *m = malloc(sizeof(Monitor));
-	m->num = 0;
-	m->mx = 0;
-	m->my = 0;
-	m->mw = 0;
-	m->mh = 0;
-	m->gapx = 0;
-	m->clients = NULL;
-	m->next = NULL;
-	return m;
+Monitor *create_monitor(int num) {
+  Monitor *m = malloc(sizeof(Monitor));
+  m->num = num;
+  m->mx = 0;
+  m->my = 0;
+  m->mw = 0;
+  m->mh = 0;
+  m->gapx = 0;
+  m->next = NULL;
+  m->desktops = malloc(sizeof(Desktop));
+  m->current_desktop = m->desktops;
+
+  return m;
 }
 
-static unsigned int numlockmask = 0;
+void spawn(const Arg *arg) {
+  int status;
 
-static void handle_map_request(xcb_window_t window) {
+  if (fork() == 0) {
+    status = system(arg->v);
+    exit(0);
+  }
+}
+
+Client *create_client(xcb_window_t window) {
+  Client *c = malloc(sizeof(Client));
+  c->window = window;
+  c->next = NULL;
+  c->is_floating = 0;
+  c->is_maximized = 0;
+  c->is_open = 1;
+
+  return c;
+}
+
+void handle_map_request(xcb_window_t window) {
   xcb_map_window(conn, window);
 
-//
+  if (session->clients) {
+    Client *c = session->clients;
+    while (c->next) {
+      c = c->next;
+    }
+    c->next = create_client(window);
+  } else {
+    session->clients = create_client(window);
+  }
+  session->clients = create_client(window);
+
   xcb_flush(conn);
 }
 
-static void handle_key_press(xcb_key_press_event_t *event) {
+void handle_key_press(xcb_key_press_event_t *event) {
   xcb_key_symbols_t *keysyms = xcb_key_symbols_alloc(conn);
   xcb_keysym_t keysym;
   keysym =
@@ -75,14 +148,18 @@ static void handle_key_press(xcb_key_press_event_t *event) {
 
   int i;
 
-//  manager_trigger_key(manager_session, keysym, event->state);
+  for (i = 0; i < LENGTH(KEYS); i++) {
+    if (keysym == KEYS[i].keysym &&
+        CLEANMASK(event->state) == CLEANMASK(KEYS[i].modifiers)) {
+      KEYS[i].func(&(KEYS[i].arg));
+      break;
+    }
+  }
+
   xcb_flush(conn);
 }
 
-static void handle_button_release(xcb_generic_event_t *ev) {
-  debug_info("Button released");
-  xcb_flush(conn);
-}
+void handle_button_release(xcb_generic_event_t *ev) { xcb_flush(conn); }
 
 int main() {
   conn = xcb_connect(NULL, NULL);
@@ -90,7 +167,6 @@ int main() {
   int ret = xcb_connection_has_error(conn);
 
   if (ret > 0) {
-    debug_info_int("Connection error: %d", ret);
     exit(ret);
   }
 
@@ -99,6 +175,8 @@ int main() {
   xcb_flush(conn);
 
   root = screen->root;
+
+  session = init_session();
 
   int values[3];
 
@@ -115,7 +193,6 @@ int main() {
                   XCB_BUTTON_INDEX_1, XCB_MOD_MASK_ANY);
 
   while (1) {
-    debug_info("Entering main loop\n");
     xcb_flush(conn);
     ev = xcb_wait_for_event(conn);
 
@@ -124,17 +201,17 @@ int main() {
       handle_button_release(ev);
       break;
     case XCB_KEY_PRESS:
-      debug_info("Keyboard Pressed\n");
+      printf("Keyboard Pressed\n");
       xcb_key_press_event_t *key_event = (xcb_key_press_event_t *)ev;
       handle_key_press(key_event);
       break;
     case XCB_MAP_REQUEST:
-      debug_info("Map request\n");
+      printf("Map request\n");
       xcb_map_request_event_t *map_event = (xcb_map_request_event_t *)ev;
       handle_map_request(map_event->window);
       break;
     default:
-      debug_info_int("Unknown event: %d\n", ev->response_type);
+      printf("Unknown event: %d\n", ev->response_type);
       xcb_flush(conn);
       break;
     }
