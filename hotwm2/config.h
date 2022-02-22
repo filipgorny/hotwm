@@ -7,6 +7,8 @@ static const int GAP_WIDTH = 15;
 
 static const int STACK_WIDTH_PERCENT = 35;
 
+static const int BAR_MARGIN = 48;
+
 #define MODKEY Mod1Mask
 
 static const Key KEYS[] = {

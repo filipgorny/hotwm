@@ -29,10 +29,10 @@ struct Client {
   char name[255];
   Client *next;
   int is_floating, is_maximized, is_open;
+  int x, y, width, height;
 };
 
 typedef struct {
-  char name[255];
   Client *clients;
 } Desktop;
 
@@ -40,7 +40,6 @@ typedef struct Monitor Monitor;
 struct Monitor {
   int num;
   int mx, my, mw, mh; // screen size
-  int gapx;
   Monitor *next;
   Desktop *desktops;
   Desktop *current_desktop;
@@ -48,8 +47,8 @@ struct Monitor {
 
 typedef struct {
   Monitor *monitors;
-  Client *clients;
-  Monitor *current;
+  Monitor *current_monitor;
+  Client *current_client;
 } Session;
 
 typedef union {
@@ -73,6 +72,8 @@ static void trigger_key_bind(xcb_keysym_t keysym, uint16_t state);
 static void handle_map_request(xcb_window_t window);
 static void handle_key_press(xcb_key_press_event_t *event);
 static void handle_button_release(xcb_generic_event_t *ev);
+static void update_client_geometry(Client *c);
+static void layout_stacked();
 
 #include "config.h"
 
@@ -80,11 +81,17 @@ Session *session;
 
 Session *init_session() {
   session = malloc(sizeof(Session));
-  session->monitors = malloc(sizeof(Monitor));
-  session->clients = NULL;
-  session->current = session->monitors;
+  session->monitors = create_monitor(0);
+  session->current_monitor = session->monitors;
 
   return session;
+}
+
+Desktop *create_desktop() {
+  Desktop *desktop = malloc(sizeof(Desktop));
+  desktop->clients = NULL;
+
+  return desktop;
 }
 
 Monitor *create_monitor(int num) {
@@ -92,11 +99,10 @@ Monitor *create_monitor(int num) {
   m->num = num;
   m->mx = 0;
   m->my = 0;
-  m->mw = 0;
-  m->mh = 0;
-  m->gapx = 0;
+  m->mw = screen->width_in_pixels;
+  m->mh = screen->height_in_pixels;
   m->next = NULL;
-  m->desktops = malloc(sizeof(Desktop));
+  m->desktops = create_desktop();
   m->current_desktop = m->desktops;
 
   return m;
@@ -125,16 +131,21 @@ Client *create_client(xcb_window_t window) {
 void handle_map_request(xcb_window_t window) {
   xcb_map_window(conn, window);
 
-  if (session->clients) {
-    Client *c = session->clients;
+  Client *current_client = create_client(window);
+
+  if (session->current_monitor->current_desktop->clients != NULL) {
+    Client *c = session->current_monitor->current_desktop->clients;
     while (c->next) {
       c = c->next;
     }
-    c->next = create_client(window);
+    c->next = current_client;
   } else {
-    session->clients = create_client(window);
+    session->current_monitor->current_desktop->clients = current_client;
   }
-  session->clients = create_client(window);
+
+  session->current_client = current_client;
+
+  layout_stacked();
 
   xcb_flush(conn);
 }
@@ -152,14 +163,107 @@ void handle_key_press(xcb_key_press_event_t *event) {
     if (keysym == KEYS[i].keysym &&
         CLEANMASK(event->state) == CLEANMASK(KEYS[i].modifiers)) {
       KEYS[i].func(&(KEYS[i].arg));
-      break;
+
+      xcb_flush(conn);
+
+      return;
     }
+  }
+
+  if (session->current_client) {
+    xcb_send_event(conn, 0, session->current_client->window,
+                   XCB_EVENT_MASK_STRUCTURE_NOTIFY, (char *)event);
   }
 
   xcb_flush(conn);
 }
 
 void handle_button_release(xcb_generic_event_t *ev) { xcb_flush(conn); }
+
+void update_client_geometry(Client *c) {
+  int vals[5];
+
+  vals[0] = c->x;
+  vals[1] = c->y;
+  vals[2] = c->width;
+  vals[3] = c->height;
+  vals[4] = 2;
+  xcb_configure_window(conn, c->window,
+                       XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
+                           XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT |
+                           XCB_CONFIG_WINDOW_BORDER_WIDTH,
+                       vals);
+
+  if (c == session->current_client) {
+    vals[0] = BORDER_COLOR_ACTIVE;
+  } else {
+    vals[0] = BORDER_COLOR_INACTIVE;
+  }
+
+  xcb_change_window_attributes(conn, c->window, XCB_CW_BORDER_PIXEL, vals);
+
+  xcb_flush(conn);
+}
+
+void layout_stacked() {
+  Client *c = session->current_monitor->current_desktop->clients;
+
+  int length = 0;
+
+  do {
+    if (c->is_open && c != session->current_client) {
+      length++;
+    }
+  } while (c = c->next);
+
+  int window_height = session->current_monitor->mh - BAR_MARGIN - 2 * GAP_WIDTH;
+
+  int current_y = BAR_MARGIN + GAP_WIDTH;
+
+  int i;
+
+  c = session->current_monitor->current_desktop->clients;
+
+  for (i = 0; i < length; i++) {
+    if (c->is_open && c != session->current_client) {
+      c->x = GAP_WIDTH;
+      c->y = current_y;
+      c->width = STACK_WIDTH_PERCENT * 0.01f * session->current_monitor->mw -
+                 GAP_WIDTH;
+
+      c->height = (int)((session->current_monitor->mh - BAR_MARGIN -
+                         (length + 1) * GAP_WIDTH) /
+                        length);
+
+      update_client_geometry(c);
+
+      current_y += c->height + GAP_WIDTH;
+    }
+
+    c = c->next;
+  }
+
+  if (length > 0) {
+    session->current_client->x =
+        STACK_WIDTH_PERCENT * 0.01f * session->current_monitor->mw + GAP_WIDTH;
+
+    session->current_client->width =
+        session->current_monitor->mw - 2 * GAP_WIDTH -
+        STACK_WIDTH_PERCENT * 0.01f * session->current_monitor->mw;
+
+  } else {
+    session->current_client->x = GAP_WIDTH;
+
+    session->current_client->width =
+        session->current_monitor->mw - 2 * GAP_WIDTH;
+  }
+
+  session->current_client->y = BAR_MARGIN + GAP_WIDTH;
+  session->current_client->height =
+      session->current_monitor->mh - BAR_MARGIN - 2 * GAP_WIDTH;
+
+  update_client_geometry(session->current_client);
+}
 
 int main() {
   conn = xcb_connect(NULL, NULL);
