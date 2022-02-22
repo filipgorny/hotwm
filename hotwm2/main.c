@@ -49,6 +49,7 @@ typedef struct {
   Monitor *monitors;
   Monitor *current_monitor;
   Client *current_client;
+  Client *selected_client;
 } Session;
 
 typedef union {
@@ -74,6 +75,11 @@ static void handle_key_press(xcb_key_press_event_t *event);
 static void handle_button_release(xcb_generic_event_t *ev);
 static void update_client_geometry(Client *c);
 static void layout_stacked();
+static void active_up();
+static void active_down();
+static void redraw();
+static void toggle();
+static void layout_mono();
 
 #include "config.h"
 
@@ -83,6 +89,8 @@ Session *init_session() {
   session = malloc(sizeof(Session));
   session->monitors = create_monitor(0);
   session->current_monitor = session->monitors;
+  session->selected_client = NULL;
+  session->current_client = NULL;
 
   return session;
 }
@@ -128,6 +136,70 @@ Client *create_client(xcb_window_t window) {
   return c;
 }
 
+void active_down() {
+  Client *c = session->current_monitor->current_desktop->clients;
+
+  while (c->next) {
+    if (c->next == session->selected_client) {
+      session->selected_client = c;
+
+      redraw();
+
+      return;
+    }
+
+    c = c->next;
+  }
+}
+
+void active_up() {
+  Client *c = session->current_monitor->current_desktop->clients;
+
+  if (!c->next) {
+    session->selected_client = c;
+
+    redraw();
+
+    return;
+  }
+
+  while (c->next) {
+    if (c == session->selected_client) {
+      session->selected_client = c->next;
+
+      redraw();
+
+      return;
+    }
+
+    c = c->next;
+  }
+}
+
+void toggle() {
+  session->current_client = session->selected_client;
+  redraw();
+
+  return;
+  Client *c = session->current_monitor->current_desktop->clients;
+
+  while (c->next) {
+    if (c == session->selected_client) {
+      Client *current = session->current_client;
+
+      session->current_client = c;
+      c = current;
+      c->next = current->next;
+
+      redraw();
+
+      return;
+    }
+
+    c = c->next;
+  }
+}
+
 void handle_map_request(xcb_window_t window) {
   xcb_map_window(conn, window);
 
@@ -144,8 +216,9 @@ void handle_map_request(xcb_window_t window) {
   }
 
   session->current_client = current_client;
+  session->selected_client = current_client;
 
-  layout_stacked();
+  redraw();
 
   xcb_flush(conn);
 }
@@ -171,7 +244,7 @@ void handle_key_press(xcb_key_press_event_t *event) {
   }
 
   if (session->current_client) {
-    xcb_send_event(conn, 0, session->current_client->window,
+    xcb_send_event(conn, 0, session->selected_client->window,
                    XCB_EVENT_MASK_STRUCTURE_NOTIFY, (char *)event);
   }
 
@@ -194,7 +267,7 @@ void update_client_geometry(Client *c) {
                            XCB_CONFIG_WINDOW_BORDER_WIDTH,
                        vals);
 
-  if (c == session->current_client) {
+  if (c == session->selected_client) {
     vals[0] = BORDER_COLOR_ACTIVE;
   } else {
     vals[0] = BORDER_COLOR_INACTIVE;
@@ -224,7 +297,7 @@ void layout_stacked() {
 
   c = session->current_monitor->current_desktop->clients;
 
-  for (i = 0; i < length; i++) {
+  while (c) {
     if (c->is_open && c != session->current_client) {
       c->x = GAP_WIDTH;
       c->y = current_y;
@@ -264,6 +337,29 @@ void layout_stacked() {
 
   update_client_geometry(session->current_client);
 }
+
+void layout_mono() {
+  Client *c = session->current_monitor->current_desktop->clients;
+
+  while (c) {
+    xcb_unmap_window(conn, c->window);
+
+    c = c->next;
+  }
+
+  xcb_map_window(conn, session->selected_client->window);
+
+  session->selected_client->x = GAP_WIDTH;
+  session->selected_client->y = BAR_MARGIN + GAP_WIDTH;
+  session->selected_client->width =
+      session->current_monitor->mw - 2 * GAP_WIDTH;
+  session->selected_client->height =
+      session->current_monitor->mh - BAR_MARGIN - 2 * GAP_WIDTH;
+
+  update_client_geometry(session->selected_client);
+}
+
+void redraw() { layout_mono(); }
 
 int main() {
   conn = xcb_connect(NULL, NULL);
