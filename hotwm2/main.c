@@ -36,6 +36,8 @@ typedef struct {
   Client *clients;
 } Desktop;
 
+enum layout { stacked, mono };
+
 typedef struct Monitor Monitor;
 struct Monitor {
   int num;
@@ -43,6 +45,7 @@ struct Monitor {
   Monitor *next;
   Desktop *desktops;
   Desktop *current_desktop;
+  enum layout layout
 };
 
 typedef struct {
@@ -57,6 +60,7 @@ typedef union {
   unsigned int ui;
   float f;
   char *v;
+  enum layout layout
 } Arg;
 
 typedef struct {
@@ -80,6 +84,7 @@ static void active_down();
 static void redraw();
 static void toggle();
 static void layout_mono();
+static void set_layout(const Arg *arg);
 
 #include "config.h"
 
@@ -112,7 +117,7 @@ Monitor *create_monitor(int num) {
   m->next = NULL;
   m->desktops = create_desktop();
   m->current_desktop = m->desktops;
-
+  m->layout = stacked;
   return m;
 }
 
@@ -174,6 +179,11 @@ void active_up() {
 
     c = c->next;
   }
+}
+
+void set_layout(const Arg *arg) {
+  session->current_monitor->layout = arg->layout;
+  redraw();
 }
 
 void toggle() {
@@ -298,7 +308,10 @@ void layout_stacked() {
   c = session->current_monitor->current_desktop->clients;
 
   while (c) {
+    xcb_map_window(conn, c->window);
+
     if (c->is_open && c != session->current_client) {
+
       c->x = GAP_WIDTH;
       c->y = current_y;
       c->width = STACK_WIDTH_PERCENT * 0.01f * session->current_monitor->mw -
@@ -359,7 +372,13 @@ void layout_mono() {
   update_client_geometry(session->selected_client);
 }
 
-void redraw() { layout_mono(); }
+void redraw() {
+  if (session->current_monitor->layout == mono) {
+    layout_mono();
+  } else if (session->current_monitor->layout == stacked) {
+    layout_stacked();
+  }
+}
 
 int main() {
   conn = xcb_connect(NULL, NULL);

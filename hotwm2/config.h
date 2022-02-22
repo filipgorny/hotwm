@@ -16,6 +16,8 @@ static const Key KEYS[] = {
  { MODKEY,          XK_Return,          spawn,            {.v = "/bin/st"} },
  { MODKEY,          XK_j,               active_up,        {} },
  { MODKEY,          XK_k,               active_down,      {} },
- { MODKEY|ShiftMask,XK_Return,          toggle,           {} }
+ { MODKEY|ShiftMask,XK_Return,          toggle,           {} },
+ { MODKEY,          XK_m,               set_layout,       {.layout = mono} },
+ { MODKEY,          XK_s,               set_layout,       {.layout = stacked} }
 };
 
