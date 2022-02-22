@@ -12,6 +12,8 @@ static const int BAR_MARGIN = 48;
 #define MODKEY Mod1Mask
 
 static const Key KEYS[] = {
- { MODKEY,          XK_Return,          spawn,            {.v = "/bin/st"} }
+ { MODKEY,          XK_Return,          spawn,            {.v = "/bin/st"} },
+ { MODKEY,          XK_K,               active_up,        {} },
+ { MODKEY,          XK_J,               active_down,      {} }
 };
 

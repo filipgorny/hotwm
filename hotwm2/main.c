@@ -48,7 +48,8 @@ struct Monitor {
 typedef struct {
   Monitor *monitors;
   Monitor *current_monitor;
-  Client *current_client;
+  Client *main_client;
+  Client *active_client;
 } Session;
 
 typedef union {
@@ -128,22 +129,24 @@ Client *create_client(xcb_window_t window) {
   return c;
 }
 
+void active_up() {}
+
 void handle_map_request(xcb_window_t window) {
   xcb_map_window(conn, window);
 
-  Client *current_client = create_client(window);
+  Client *main_client = create_client(window);
 
   if (session->current_monitor->current_desktop->clients != NULL) {
     Client *c = session->current_monitor->current_desktop->clients;
     while (c->next) {
       c = c->next;
     }
-    c->next = current_client;
+    c->next = main_client;
   } else {
-    session->current_monitor->current_desktop->clients = current_client;
+    session->current_monitor->current_desktop->clients = main_client;
   }
 
-  session->current_client = current_client;
+  session->main_client = main_client;
 
   layout_stacked();
 
@@ -170,8 +173,8 @@ void handle_key_press(xcb_key_press_event_t *event) {
     }
   }
 
-  if (session->current_client) {
-    xcb_send_event(conn, 0, session->current_client->window,
+  if (session->main_client) {
+    xcb_send_event(conn, 0, session->main_client->window,
                    XCB_EVENT_MASK_STRUCTURE_NOTIFY, (char *)event);
   }
 
@@ -194,7 +197,7 @@ void update_client_geometry(Client *c) {
                            XCB_CONFIG_WINDOW_BORDER_WIDTH,
                        vals);
 
-  if (c == session->current_client) {
+  if (c == session->main_client) {
     vals[0] = BORDER_COLOR_ACTIVE;
   } else {
     vals[0] = BORDER_COLOR_INACTIVE;
@@ -211,7 +214,7 @@ void layout_stacked() {
   int length = 0;
 
   do {
-    if (c->is_open && c != session->current_client) {
+    if (c->is_open && c != session->main_client) {
       length++;
     }
   } while (c = c->next);
@@ -225,7 +228,7 @@ void layout_stacked() {
   c = session->current_monitor->current_desktop->clients;
 
   for (i = 0; i < length; i++) {
-    if (c->is_open && c != session->current_client) {
+    if (c->is_open && c != session->main_client) {
       c->x = GAP_WIDTH;
       c->y = current_y;
       c->width = STACK_WIDTH_PERCENT * 0.01f * session->current_monitor->mw -
@@ -244,25 +247,24 @@ void layout_stacked() {
   }
 
   if (length > 0) {
-    session->current_client->x =
+    session->main_client->x =
         STACK_WIDTH_PERCENT * 0.01f * session->current_monitor->mw + GAP_WIDTH;
 
-    session->current_client->width =
+    session->main_client->width =
         session->current_monitor->mw - 2 * GAP_WIDTH -
         STACK_WIDTH_PERCENT * 0.01f * session->current_monitor->mw;
 
   } else {
-    session->current_client->x = GAP_WIDTH;
+    session->main_client->x = GAP_WIDTH;
 
-    session->current_client->width =
-        session->current_monitor->mw - 2 * GAP_WIDTH;
+    session->main_client->width = session->current_monitor->mw - 2 * GAP_WIDTH;
   }
 
-  session->current_client->y = BAR_MARGIN + GAP_WIDTH;
-  session->current_client->height =
+  session->main_client->y = BAR_MARGIN + GAP_WIDTH;
+  session->main_client->height =
       session->current_monitor->mh - BAR_MARGIN - 2 * GAP_WIDTH;
 
-  update_client_geometry(session->current_client);
+  update_client_geometry(session->main_client);
 }
 
 int main() {
