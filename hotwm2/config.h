@@ -21,3 +21,6 @@ static const Key KEYS[] = {
  { MODKEY,          XK_s,               set_layout,       {.layout = stacked} }
 };
 
+//static const Button BUTTONS[] = {
+ // { ClkClientWin,   MODKEY,              Button1,     toggle_float,          {0}}
+//}

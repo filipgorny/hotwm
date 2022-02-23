@@ -49,10 +49,15 @@ struct Monitor {
 };
 
 typedef struct {
+  int x, y;
+} Mouse;
+
+typedef struct {
   Monitor *monitors;
   Monitor *current_monitor;
   Client *current_client;
   Client *selected_client;
+  Mouse *mouse;
 } Session;
 
 typedef union {
@@ -62,6 +67,14 @@ typedef union {
   char *v;
   enum layout layout
 } Arg;
+
+typedef struct {
+  unsigned int click;
+  unsigned int mask;
+  unsigned int button;
+  void (*func)(const Arg *arg);
+  const Arg arg;
+} Button;
 
 typedef struct {
   unsigned int modifiers;
@@ -85,6 +98,9 @@ static void redraw();
 static void toggle();
 static void layout_mono();
 static void set_layout(const Arg *arg);
+static void toggle_floating(const Arg *arg);
+static void handle_mouse_motion(xcb_motion_notify_event_t *event);
+static xcb_window_t create_parent(Client *client);
 
 #include "config.h"
 
@@ -96,8 +112,25 @@ Session *init_session() {
   session->current_monitor = session->monitors;
   session->selected_client = NULL;
   session->current_client = NULL;
+  session->mouse = malloc(sizeof(Mouse));
 
   return session;
+}
+
+xcb_window_t create_parent(Client *client) {
+  xcb_window_t parent_window = xcb_generate_id(conn);
+  xcb_create_window(conn, 1, parent_window, root, client->x, client->y,
+                    client->width, client->height, 0,
+                    XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual, 0,
+                    NULL);
+
+  xcb_reparent_window(conn, client->window, parent_window, 2, 10);
+
+  xcb_map_window(conn, parent_window);
+
+  xcb_flush(conn);
+
+  return parent_window;
 }
 
 Desktop *create_desktop() {
@@ -263,6 +296,13 @@ void handle_key_press(xcb_key_press_event_t *event) {
 
 void handle_button_release(xcb_generic_event_t *ev) { xcb_flush(conn); }
 
+void handle_mouse_motion(xcb_motion_notify_event_t *event) {
+  session->mouse->x = event->root_x;
+  session->mouse->y = event->root_y;
+
+  printf("%d %d\n", session->mouse->x, session->mouse->y);
+}
+
 void update_client_geometry(Client *c) {
   int vals[5];
 
@@ -310,7 +350,7 @@ void layout_stacked() {
   while (c) {
     xcb_map_window(conn, c->window);
 
-    if (c->is_open && c != session->current_client) {
+    if (!c->is_floating && c->is_open && c != session->current_client) {
 
       c->x = GAP_WIDTH;
       c->y = current_y;
@@ -355,6 +395,10 @@ void layout_mono() {
   Client *c = session->current_monitor->current_desktop->clients;
 
   while (c) {
+    if (c->is_floating) {
+      continue;
+    }
+
     xcb_unmap_window(conn, c->window);
 
     c = c->next;
@@ -378,6 +422,18 @@ void redraw() {
   } else if (session->current_monitor->layout == stacked) {
     layout_stacked();
   }
+}
+
+void toggle_floating(const Arg *arg) {
+  if (session->selected_client->is_floating) {
+    session->selected_client->is_floating = 0;
+  } else {
+    session->selected_client->is_floating = 1;
+  }
+
+  redraw();
+
+  xcb_flush(conn);
 }
 
 int main() {
@@ -411,13 +467,20 @@ int main() {
                   XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, root, XCB_NONE,
                   XCB_BUTTON_INDEX_1, XCB_MOD_MASK_ANY);
 
+  xcb_grab_pointer(conn, 1, root,
+                   XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS,
+                   XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, XCB_NONE,
+                   XCB_CURRENT_TIME);
   while (1) {
     xcb_flush(conn);
     ev = xcb_wait_for_event(conn);
 
     switch (ev->response_type) {
-    case 5: // Button release event
+    case XCB_EVENT_MASK_BUTTON_RELEASE: // Button release event
       handle_button_release(ev);
+      break;
+    case 6: // MOUSE MOTION
+      handle_mouse_motion(ev);
       break;
     case XCB_KEY_PRESS:
       printf("Keyboard Pressed\n");
