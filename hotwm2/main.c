@@ -26,6 +26,7 @@ static xcb_screen_t *screen;
 typedef struct Client Client;
 struct Client {
   xcb_window_t window;
+  xcb_window_t parent;
   char name[255];
   Client *next;
   int is_floating, is_maximized, is_open;
@@ -119,11 +120,11 @@ Session *init_session() {
 
 xcb_window_t create_parent(Client *client) {
   xcb_window_t parent_window = xcb_generate_id(conn);
-  xcb_create_window(conn, 1, parent_window, root, client->x, client->y,
-                    client->width, client->height, 0,
-                    XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual, 0,
-                    NULL);
+  xcb_create_window(conn, screen->root_depth, parent_window, root, 2, 20, 600,
+                    500, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual,
+                    0, NULL);
 
+  // xcb_unmap_window(conn, client->window);
   xcb_reparent_window(conn, client->window, parent_window, 2, 10);
 
   xcb_map_window(conn, parent_window);
@@ -170,6 +171,7 @@ Client *create_client(xcb_window_t window) {
   c->is_floating = 0;
   c->is_maximized = 0;
   c->is_open = 1;
+  c->parent = create_parent(c);
 
   return c;
 }
@@ -306,12 +308,27 @@ void handle_mouse_motion(xcb_motion_notify_event_t *event) {
 void update_client_geometry(Client *c) {
   int vals[5];
 
+  xcb_window_t target_window = c->parent;
+
   vals[0] = c->x;
   vals[1] = c->y;
   vals[2] = c->width;
   vals[3] = c->height;
   vals[4] = 2;
-  xcb_configure_window(conn, c->window,
+  xcb_configure_window(conn, target_window,
+                       XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
+                           XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT |
+                           XCB_CONFIG_WINDOW_BORDER_WIDTH,
+                       vals);
+
+  target_window = c->window;
+
+  vals[0] = 2;
+  vals[1] = 20;
+  vals[2] = c->width - 8;
+  vals[3] = c->height - 40;
+  vals[4] = 2;
+  xcb_configure_window(conn, target_window,
                        XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
                            XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT |
                            XCB_CONFIG_WINDOW_BORDER_WIDTH,
@@ -323,7 +340,9 @@ void update_client_geometry(Client *c) {
     vals[0] = BORDER_COLOR_INACTIVE;
   }
 
-  xcb_change_window_attributes(conn, c->window, XCB_CW_BORDER_PIXEL, vals);
+  target_window = c->parent;
+
+  xcb_change_window_attributes(conn, target_window, XCB_CW_BORDER_PIXEL, vals);
 
   xcb_flush(conn);
 }
@@ -348,7 +367,8 @@ void layout_stacked() {
   c = session->current_monitor->current_desktop->clients;
 
   while (c) {
-    xcb_map_window(conn, c->window);
+    xcb_window_t target_window = c->parent;
+    xcb_map_window(conn, target_window);
 
     if (!c->is_floating && c->is_open && c != session->current_client) {
 
@@ -399,12 +419,12 @@ void layout_mono() {
       continue;
     }
 
-    xcb_unmap_window(conn, c->window);
+    xcb_unmap_window(conn, c->parent);
 
     c = c->next;
   }
 
-  xcb_map_window(conn, session->selected_client->window);
+  xcb_map_window(conn, session->selected_client->parent);
 
   session->selected_client->x = GAP_WIDTH;
   session->selected_client->y = BAR_MARGIN + GAP_WIDTH;
