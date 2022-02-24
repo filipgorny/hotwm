@@ -1,4 +1,6 @@
 #include <X11/Xutil.h>
+#include <cairo/cairo-xcb.h>
+#include <cairo/cairo.h>
 #include <spawn.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,103 +9,21 @@
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xproto.h>
 
-static unsigned int numlockmask = 0;
+#include "main.h"
 
-#define LENGTH(X) (sizeof(X) / sizeof(X[0]))
-#define CLEANMASK(mask)                                                        \
-  (mask & ~(numlockmask | LockMask) &                                          \
-   (ShiftMask | ControlMask | Mod1Mask | Mod2Mask | Mod3Mask | Mod4Mask |      \
-    Mod5Mask))
+#include "config.h"
+
+#include "gui.h"
 
 const xcb_setup_t *setup;
 xcb_generic_event_t *ev;
 
 xcb_drawable_t root;
 
-static xcb_connection_t *conn;
-static xcb_screen_t *screen;
+xcb_connection_t *conn;
+xcb_screen_t *screen;
 
-typedef struct Client Client;
-struct Client {
-  xcb_window_t window;
-  xcb_window_t parent;
-  char name[255];
-  Client *next;
-  int is_floating, is_maximized, is_open;
-  int x, y, width, height;
-};
-
-typedef struct {
-  Client *clients;
-} Desktop;
-
-enum layout { stacked, mono };
-
-typedef struct Monitor Monitor;
-struct Monitor {
-  int num;
-  int mx, my, mw, mh; // screen size
-  Monitor *next;
-  Desktop *desktops;
-  Desktop *current_desktop;
-  enum layout layout
-};
-
-typedef struct {
-  int x, y;
-} Mouse;
-
-typedef struct {
-  Monitor *monitors;
-  Monitor *current_monitor;
-  Client *current_client;
-  Client *selected_client;
-  Mouse *mouse;
-} Session;
-
-typedef union {
-  int i;
-  unsigned int ui;
-  float f;
-  char *v;
-  enum layout layout
-} Arg;
-
-typedef struct {
-  unsigned int click;
-  unsigned int mask;
-  unsigned int button;
-  void (*func)(const Arg *arg);
-  const Arg arg;
-} Button;
-
-typedef struct {
-  unsigned int modifiers;
-  xcb_keysym_t keysym;
-  void (*func)(const Arg *);
-  const Arg arg;
-} Key;
-
-static void spawn(const Arg *arg);
-static Session *init_session();
-static Monitor *create_monitor(int num);
-static void trigger_key_bind(xcb_keysym_t keysym, uint16_t state);
-static void handle_map_request(xcb_window_t window);
-static void handle_key_press(xcb_key_press_event_t *event);
-static void handle_button_release(xcb_generic_event_t *ev);
-static void update_client_geometry(Client *c);
-static void layout_stacked();
-static void active_up();
-static void active_down();
-static void redraw();
-static void toggle();
-static void layout_mono();
-static void set_layout(const Arg *arg);
-static void toggle_floating(const Arg *arg);
-static void handle_mouse_motion(xcb_motion_notify_event_t *event);
-static xcb_window_t create_parent(Client *client);
-
-#include "config.h"
+Session *session;
 
 Session *session;
 
@@ -125,7 +45,8 @@ xcb_window_t create_parent(Client *client) {
                     0, NULL);
 
   // xcb_unmap_window(conn, client->window);
-  xcb_reparent_window(conn, client->window, parent_window, 2, 10);
+  xcb_reparent_window(conn, client->window, parent_window, WINDOW_PADDING,
+                      TITLE_BAR_HEIGHT);
 
   xcb_map_window(conn, parent_window);
 
@@ -172,8 +93,24 @@ Client *create_client(xcb_window_t window) {
   c->is_maximized = 0;
   c->is_open = 1;
   c->parent = create_parent(c);
+  c->is_selected = 0;
+  c->conn = conn;
 
   return c;
+}
+
+void select_client(Client *client) {
+  Client *c = session->current_monitor->current_desktop->clients;
+
+  for (; c != NULL; c = c->next) {
+    if (c == client) {
+      c->is_selected = 1;
+    } else {
+      c->is_selected = 0;
+    }
+  }
+
+  session->selected_client = client;
 }
 
 void active_down() {
@@ -181,7 +118,7 @@ void active_down() {
 
   while (c->next) {
     if (c->next == session->selected_client) {
-      session->selected_client = c;
+      select_client(c);
 
       redraw();
 
@@ -196,7 +133,7 @@ void active_up() {
   Client *c = session->current_monitor->current_desktop->clients;
 
   if (!c->next) {
-    session->selected_client = c;
+    select_client(c);
 
     redraw();
 
@@ -205,7 +142,7 @@ void active_up() {
 
   while (c->next) {
     if (c == session->selected_client) {
-      session->selected_client = c->next;
+      select_client(c->next);
 
       redraw();
 
@@ -261,11 +198,10 @@ void handle_map_request(xcb_window_t window) {
   }
 
   session->current_client = current_client;
-  session->selected_client = current_client;
+
+  select_client(current_client);
 
   redraw();
-
-  xcb_flush(conn);
 }
 
 void handle_key_press(xcb_key_press_event_t *event) {
@@ -314,7 +250,7 @@ void update_client_geometry(Client *c) {
   vals[1] = c->y;
   vals[2] = c->width;
   vals[3] = c->height;
-  vals[4] = 2;
+  vals[4] = 0;
   xcb_configure_window(conn, target_window,
                        XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
                            XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT |
@@ -323,11 +259,11 @@ void update_client_geometry(Client *c) {
 
   target_window = c->window;
 
-  vals[0] = 2;
-  vals[1] = 20;
-  vals[2] = c->width - 8;
-  vals[3] = c->height - 40;
-  vals[4] = 2;
+  vals[0] = WINDOW_PADDING;
+  vals[1] = TITLE_BAR_HEIGHT;
+  vals[2] = c->width - WINDOW_PADDING * 2;
+  vals[3] = c->height - TITLE_BAR_HEIGHT - WINDOW_PADDING;
+  vals[4] = 0;
   xcb_configure_window(conn, target_window,
                        XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
                            XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT |
@@ -343,6 +279,8 @@ void update_client_geometry(Client *c) {
   target_window = c->parent;
 
   xcb_change_window_attributes(conn, target_window, XCB_CW_BORDER_PIXEL, vals);
+
+  gui_decorate_client(c);
 
   xcb_flush(conn);
 }
@@ -363,6 +301,26 @@ void layout_stacked() {
   int current_y = BAR_MARGIN + GAP_WIDTH;
 
   int i;
+  if (length > 0) {
+    session->current_client->x =
+        STACK_WIDTH_PERCENT * 0.01f * session->current_monitor->mw + GAP_WIDTH;
+
+    session->current_client->width =
+        session->current_monitor->mw - 2 * GAP_WIDTH -
+        STACK_WIDTH_PERCENT * 0.01f * session->current_monitor->mw;
+
+  } else {
+    session->current_client->x = GAP_WIDTH;
+
+    session->current_client->width =
+        session->current_monitor->mw - 2 * GAP_WIDTH;
+  }
+
+  session->current_client->y = BAR_MARGIN + GAP_WIDTH;
+  session->current_client->height =
+      session->current_monitor->mh - BAR_MARGIN - 2 * GAP_WIDTH;
+
+  update_client_geometry(session->current_client);
 
   c = session->current_monitor->current_desktop->clients;
 
@@ -389,26 +347,7 @@ void layout_stacked() {
     c = c->next;
   }
 
-  if (length > 0) {
-    session->current_client->x =
-        STACK_WIDTH_PERCENT * 0.01f * session->current_monitor->mw + GAP_WIDTH;
-
-    session->current_client->width =
-        session->current_monitor->mw - 2 * GAP_WIDTH -
-        STACK_WIDTH_PERCENT * 0.01f * session->current_monitor->mw;
-
-  } else {
-    session->current_client->x = GAP_WIDTH;
-
-    session->current_client->width =
-        session->current_monitor->mw - 2 * GAP_WIDTH;
-  }
-
-  session->current_client->y = BAR_MARGIN + GAP_WIDTH;
-  session->current_client->height =
-      session->current_monitor->mh - BAR_MARGIN - 2 * GAP_WIDTH;
-
-  update_client_geometry(session->current_client);
+  xcb_flush(conn);
 }
 
 void layout_mono() {
@@ -442,6 +381,8 @@ void redraw() {
   } else if (session->current_monitor->layout == stacked) {
     layout_stacked();
   }
+
+  xcb_flush(conn);
 }
 
 void toggle_floating(const Arg *arg) {
@@ -472,6 +413,8 @@ int main() {
   root = screen->root;
 
   session = init_session();
+
+  draw_init(conn, screen);
 
   int values[3];
 
