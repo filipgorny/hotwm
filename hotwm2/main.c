@@ -197,6 +197,13 @@ void handle_map_request(xcb_window_t window) {
     session->current_monitor->current_desktop->clients = current_client;
   }
 
+  int values[3];
+
+  values[0] =
+      XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | XCB_EVENT_MASK_STRUCTURE_NOTIFY |
+      XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY | XCB_EVENT_MASK_PROPERTY_CHANGE;
+  xcb_change_window_attributes_checked(conn, window, XCB_CW_EVENT_MASK, values);
+
   session->current_client = current_client;
 
   select_client(current_client);
@@ -439,6 +446,39 @@ int main() {
     ev = xcb_wait_for_event(conn);
 
     switch (ev->response_type) {
+    case XCB_EVENT_MASK_PROPERTY_CHANGE:
+      printf("PROPERTY_CHANGE\n");
+      xcb_property_notify_event_t *property_event =
+          (xcb_property_notify_event_t *)ev;
+
+      if (property_event->state == XCB_PROPERTY_NEW_VALUE) {
+        if (property_event->atom == XCB_ATOM_WM_NAME) {
+          xcb_get_property_cookie_t cookie = xcb_get_property(
+              conn, 0, property_event->window, XCB_ATOM_WM_NAME,
+              XCB_ATOM_STRING, 0, UINT32_MAX);
+
+          xcb_get_property_reply_t *reply =
+              xcb_get_property_reply(conn, cookie, NULL);
+
+          if (reply) {
+            char *name = xcb_get_property_value(reply);
+            if (name) {
+              printf("NAME: %s\n", name);
+              Client *c = session->current_monitor->current_desktop->clients;
+
+              while (c) {
+                if (c->parent == property_event->window) {
+                  c->name = name;
+                  break;
+                }
+
+                c = c->next;
+              }
+            }
+          }
+        }
+      }
+      break;
     case XCB_EVENT_MASK_BUTTON_RELEASE: // Button release event
       handle_button_release(ev);
       break;

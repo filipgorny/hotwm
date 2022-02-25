@@ -23,3 +23,13 @@ void draw_rect(xcb_window_t window, int x, int y, int w, int h,
   xcb_poly_fill_rectangle(draw->conn, window, draw->gc, 1, &rect);
   //  xcb_flush(draw->conn);
 }
+
+void draw_text(xcb_window_t window, int x, int y, const char *text,
+               const uint32_t color, char *font) {
+  uint32_t values[] = {color};
+  xcb_change_gc(draw->conn, draw->gc, XCB_GC_FOREGROUND, values);
+
+  values_fonts[] = {font};
+  xcb_image_text_8(draw->conn, strlen(text), window, draw->gc, x, y, text);
+  //  xcb_flush(draw->conn)
+}

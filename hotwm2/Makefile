@@ -7,7 +7,7 @@ LDLIBS = -lm
 BINDIR = $(PREFIX)/bin
 MANDIR = $(PREFIX)/share/man
 DEPS = config.h draw.h main.h gui.h window.h layout.h arg.h input.h client.h
-OBJS = main.o draw.o gui.o window.o
+OBJS = main.o draw.o gui.o window.o client.o
 
 all: hotwm
 

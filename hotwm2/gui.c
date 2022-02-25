@@ -6,8 +6,6 @@
 #include "config.h"
 #include "gui.h"
 
-#include "window.h"
-
 void gui_decorate_client(Client *client) {
   uint32_t color = 0;
 
@@ -19,7 +17,7 @@ void gui_decorate_client(Client *client) {
 
   draw_rect(client->parent, 0, 0, client->width, client->height, color);
 
-  char *title = window_get_name(client);
+  char *title = client_get_name(client);
 
-  printf("titke: %s\n", title);
+  draw_text(client->parent, 8, 8, title, COLOR_TITLE_TEXT_ACTIVE);
 }

@@ -41,3 +41,5 @@ static const int COLOR_BORDER_ACTIVE = 0x00555555;
 static const int COLOR_TITLE_TEXT_INACTIVE = 0x00ffffff;
 static const int COLOR_TITLE_TEXT_ACTIVE = 0x00ffffff;
 
+static char *GUI_DEFAULT_FONT = "hack:size=12";
+
