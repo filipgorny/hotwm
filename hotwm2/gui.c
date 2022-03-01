@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <sys/types.h>
 #include <xcb/xcb.h>
 
@@ -19,5 +20,6 @@ void gui_decorate_client(Client *client) {
 
   char *title = client_get_name(client);
 
-  draw_text(client->parent, 8, 8, title, COLOR_TITLE_TEXT_ACTIVE);
+  draw_text(client->parent, 8, 8, title, COLOR_TITLE_TEXT_ACTIVE,
+            "Roboto-Regular");
 }

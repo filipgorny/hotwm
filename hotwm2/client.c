@@ -1,6 +1,7 @@
-#include "client.h"
 #include <stdlib.h>
 #include <xcb/xcb.h>
+
+#include "client.h"
 
 char *client_get_name(Client *client) {
 
@@ -20,4 +21,58 @@ char *client_get_name(Client *client) {
     free(r);
   }
   return NULL;
+}
+
+Client *client_put_on_top(Client *client, Client *target) {
+  printf("Lookinf for selected client\n");
+  if (client == target) {
+    return client;
+  }
+
+  Client *next = target->next;
+  printf("AA1\n");
+
+  target->next = client;
+
+  Client *c = client;
+  printf("AA2\n");
+  while (c) {
+    if (!c->next) {
+      c->next = next;
+
+      break;
+    }
+
+    c = c->next;
+  }
+  printf("AA3\n");
+
+  target->next = client;
+
+  return target;
+}
+
+int client_count(Client *client) {
+  Client *c = client;
+
+  int count = 0;
+
+  while (c != NULL) {
+    count++;
+    c = c->next;
+  }
+
+  return count;
+}
+
+Client *client_find_parent(Client *client, Client *child) {
+  Client *c = client;
+
+  while (c) {
+    if (c->next == child) {
+      return c;
+    }
+
+    c = c->next;
+  }
 }

@@ -18,8 +18,4 @@ typedef struct {
   const Arg arg;
 } Key;
 
-typedef struct {
-  int x, y;
-} Mouse;
-
 #endif

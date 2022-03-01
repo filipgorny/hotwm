@@ -1,3 +1,4 @@
+#include <X11/X.h>
 #include <X11/Xutil.h>
 #include <cairo/cairo-xcb.h>
 #include <cairo/cairo.h>
@@ -14,6 +15,8 @@
 #include "config.h"
 
 #include "gui.h"
+
+#include "mouse.h"
 
 const xcb_setup_t *setup;
 xcb_generic_event_t *ev;
@@ -32,7 +35,7 @@ Session *init_session() {
   session->monitors = create_monitor(0);
   session->current_monitor = session->monitors;
   session->selected_client = NULL;
-  session->current_client = NULL;
+  session->main_client = NULL;
   session->mouse = malloc(sizeof(Mouse));
 
   return session;
@@ -159,7 +162,7 @@ void set_layout(const Arg *arg) {
 }
 
 void toggle() {
-  session->current_client = session->selected_client;
+  session->main_client = session->selected_client;
   redraw();
 
   return;
@@ -167,9 +170,9 @@ void toggle() {
 
   while (c->next) {
     if (c == session->selected_client) {
-      Client *current = session->current_client;
+      Client *current = session->main_client;
 
-      session->current_client = c;
+      session->main_client = c;
       c = current;
       c->next = current->next;
 
@@ -185,16 +188,16 @@ void toggle() {
 void handle_map_request(xcb_window_t window) {
   xcb_map_window(conn, window);
 
-  Client *current_client = create_client(window);
+  Client *main_client = create_client(window);
 
   if (session->current_monitor->current_desktop->clients != NULL) {
     Client *c = session->current_monitor->current_desktop->clients;
     while (c->next) {
       c = c->next;
     }
-    c->next = current_client;
+    c->next = main_client;
   } else {
-    session->current_monitor->current_desktop->clients = current_client;
+    session->current_monitor->current_desktop->clients = main_client;
   }
 
   int values[3];
@@ -204,9 +207,9 @@ void handle_map_request(xcb_window_t window) {
       XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY | XCB_EVENT_MASK_PROPERTY_CHANGE;
   xcb_change_window_attributes_checked(conn, window, XCB_CW_EVENT_MASK, values);
 
-  session->current_client = current_client;
+  session->main_client = main_client;
 
-  select_client(current_client);
+  select_client(main_client);
 
   redraw();
 }
@@ -231,7 +234,7 @@ void handle_key_press(xcb_key_press_event_t *event) {
     }
   }
 
-  if (session->current_client) {
+  if (session->main_client) {
     xcb_send_event(conn, 0, session->selected_client->window,
                    XCB_EVENT_MASK_STRUCTURE_NOTIFY, (char *)event);
   }
@@ -239,13 +242,67 @@ void handle_key_press(xcb_key_press_event_t *event) {
   xcb_flush(conn);
 }
 
-void handle_button_release(xcb_generic_event_t *ev) { xcb_flush(conn); }
+void handle_button_press(xcb_button_press_event_t *ev) {
+  if (ev->detail == XCB_BUTTON_INDEX_1) {
+    mouse_update_state(CLEANMASK(ev->state) == MODKEY
+                           ? MOUSE_STATE_BUTTON1_DOWN_META
+                           : MOUSE_STATE_BUTTON1_DOWN);
+  } else if (ev->detail == XCB_BUTTON_INDEX_2) {
+    mouse_update_state(CLEANMASK(ev->state) == MODKEY
+                           ? MOUSE_STATE_BUTTON2_DOWN_META
+                           : MOUSE_STATE_BUTTON2_DOWN);
+
+  } else if (ev->detail == XCB_BUTTON_INDEX_3) {
+    mouse_update_state(CLEANMASK(ev->state) == MODKEY
+                           ? MOUSE_STATE_BUTTON3_DOWN_META
+                           : MOUSE_STATE_BUTTON3_DOWN);
+  }
+
+  mouse_update_press_cords(ev->event_x, ev->event_y);
+
+  xcb_window_t window = ev->event;
+  Client *c = session_get_client_by_cords(ev->event_x, ev->event_y);
+
+  if (c) {
+    session_select_client(c);
+
+    printf("Selected client: %d\n", session->selected_client);
+  }
+}
+
+void handle_button_release(xcb_button_release_event_t *ev) {
+  Client *c = session->selected_client;
+
+  if (c) {
+    if (mouse_get_state() == MOUSE_STATE_BUTTON1_DOWN_META) {
+      if (c->is_floating) {
+        c->x = c->x - c->display_offset_x;
+        c->y = c->y - c->display_offset_y;
+      }
+    }
+  }
+
+  mouse_update_state(MOUSE_STATE_FREE);
+}
 
 void handle_mouse_motion(xcb_motion_notify_event_t *event) {
-  session->mouse->x = event->root_x;
-  session->mouse->y = event->root_y;
+  mouse_update_cords(event->root_x, event->root_y);
 
-  printf("%d %d\n", session->mouse->x, session->mouse->y);
+  Client *c = session->selected_client;
+
+  if (c) {
+    if (mouse_get_state() == MOUSE_STATE_BUTTON1_DOWN_META) {
+      if (!c->is_floating) {
+        c->is_floating = 1;
+      }
+
+      c->display_offset_x = mouse_get_press_cords_x() - event->root_x;
+      c->display_offset_y = mouse_get_press_cords_y() - event->root_y;
+
+      update_client_geometry(c);
+      redraw();
+    }
+  }
 }
 
 void update_client_geometry(Client *c) {
@@ -253,8 +310,8 @@ void update_client_geometry(Client *c) {
 
   xcb_window_t target_window = c->parent;
 
-  vals[0] = c->x;
-  vals[1] = c->y;
+  vals[0] = c->x - c->display_offset_x;
+  vals[1] = c->y - c->display_offset_y;
   vals[2] = c->width;
   vals[3] = c->height;
   vals[4] = 0;
@@ -298,7 +355,7 @@ void layout_stacked() {
   int length = 0;
 
   do {
-    if (c->is_open && c != session->current_client) {
+    if (c->is_open && c != session->main_client) {
       length++;
     }
   } while (c = c->next);
@@ -309,25 +366,24 @@ void layout_stacked() {
 
   int i;
   if (length > 0) {
-    session->current_client->x =
+    session->main_client->x =
         STACK_WIDTH_PERCENT * 0.01f * session->current_monitor->mw + GAP_WIDTH;
 
-    session->current_client->width =
+    session->main_client->width =
         session->current_monitor->mw - 2 * GAP_WIDTH -
         STACK_WIDTH_PERCENT * 0.01f * session->current_monitor->mw;
 
   } else {
-    session->current_client->x = GAP_WIDTH;
+    session->main_client->x = GAP_WIDTH;
 
-    session->current_client->width =
-        session->current_monitor->mw - 2 * GAP_WIDTH;
+    session->main_client->width = session->current_monitor->mw - 2 * GAP_WIDTH;
   }
 
-  session->current_client->y = BAR_MARGIN + GAP_WIDTH;
-  session->current_client->height =
+  session->main_client->y = BAR_MARGIN + GAP_WIDTH;
+  session->main_client->height =
       session->current_monitor->mh - BAR_MARGIN - 2 * GAP_WIDTH;
 
-  update_client_geometry(session->current_client);
+  update_client_geometry(session->main_client);
 
   c = session->current_monitor->current_desktop->clients;
 
@@ -335,7 +391,7 @@ void layout_stacked() {
     xcb_window_t target_window = c->parent;
     xcb_map_window(conn, target_window);
 
-    if (!c->is_floating && c->is_open && c != session->current_client) {
+    if (!c->is_floating && c->is_open && c != session->main_client) {
 
       c->x = GAP_WIDTH;
       c->y = current_y;
@@ -382,11 +438,39 @@ void layout_mono() {
   update_client_geometry(session->selected_client);
 }
 
+void layout_floating() {
+  Client *c = session->current_monitor->current_desktop->clients;
+
+  while (c) {
+    if (!c->floating_initialized) {
+      c->floating_x = c->x;
+      c->floating_y = c->y;
+      c->floating_width = c->width;
+      c->floating_height = c->height;
+
+      c->floating_initialized = 1;
+    }
+
+    c->x = c->floating_x;
+    c->y = c->floating_y;
+    c->width = c->floating_width;
+    c->height = c->floating_height;
+
+    update_client_geometry(c);
+
+    c = c->next;
+  }
+
+  xcb_flush(conn);
+}
+
 void redraw() {
   if (session->current_monitor->layout == mono) {
     layout_mono();
   } else if (session->current_monitor->layout == stacked) {
     layout_stacked();
+  } else if (session->current_monitor->layout == floating) {
+    layout_floating();
   }
 
   xcb_flush(conn);
@@ -402,6 +486,42 @@ void toggle_floating(const Arg *arg) {
   redraw();
 
   xcb_flush(conn);
+}
+
+Client *session_get_client_by_window(xcb_window_t window) {
+  Client *c = session->current_monitor->current_desktop->clients;
+
+  while (c) {
+    if (c->parent == window && c->window == window) {
+      return c;
+    }
+
+    c = c->next;
+  }
+
+  return NULL;
+}
+
+Client *session_get_client_by_cords(int x, int y) {
+  Client *c = session->current_monitor->current_desktop->clients;
+
+  while (c) {
+    if (c->is_open && c->x <= x && c->x + c->width >= x && c->y <= y &&
+        c->y + c->height >= y) {
+      return c;
+    }
+
+    c = c->next;
+  }
+
+  return NULL;
+}
+
+void session_select_client(Client *client) {
+  session->selected_client = client_put_on_top(
+      session->current_monitor->current_desktop->clients, client);
+
+  printf("Selected client: %s\n", session->selected_client);
 }
 
 int main() {
@@ -422,6 +542,7 @@ int main() {
   session = init_session();
 
   draw_init(conn, screen);
+  mouse_init();
 
   int values[3];
 
@@ -438,7 +559,8 @@ int main() {
                   XCB_BUTTON_INDEX_1, XCB_MOD_MASK_ANY);
 
   xcb_grab_pointer(conn, 1, root,
-                   XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS,
+                   XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_PRESS |
+                       XCB_EVENT_MASK_BUTTON_RELEASE,
                    XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, XCB_NONE,
                    XCB_CURRENT_TIME);
   while (1) {
@@ -446,8 +568,9 @@ int main() {
     ev = xcb_wait_for_event(conn);
 
     switch (ev->response_type) {
+
     case XCB_EVENT_MASK_PROPERTY_CHANGE:
-      printf("PROPERTY_CHANGE\n");
+      printf("[Event] Property changed\n");
       xcb_property_notify_event_t *property_event =
           (xcb_property_notify_event_t *)ev;
 
@@ -463,7 +586,6 @@ int main() {
           if (reply) {
             char *name = xcb_get_property_value(reply);
             if (name) {
-              printf("NAME: %s\n", name);
               Client *c = session->current_monitor->current_desktop->clients;
 
               while (c) {
@@ -479,24 +601,38 @@ int main() {
         }
       }
       break;
-    case XCB_EVENT_MASK_BUTTON_RELEASE: // Button release event
-      handle_button_release(ev);
+    case 5: // XCB_EVENT_MASK_BUTTON_RELEASE: // Button release event
+      printf("[Event] Button release\n");
+      xcb_button_release_event_t *button_release_event =
+          (xcb_button_release_event_t *)ev;
+
+      handle_button_release(button_release_event);
+      break;
+    case XCB_EVENT_MASK_BUTTON_PRESS: // Button press event
+      printf("[Event] Button press\n");
+      xcb_button_press_event_t *button_press_event =
+          (xcb_button_press_event_t *)ev;
+
+      handle_button_press(button_press_event);
       break;
     case 6: // MOUSE MOTION
-      handle_mouse_motion(ev);
+      printf("[Event] Mouse motion\n");
+      xcb_motion_notify_event_t *motion_event = (xcb_motion_notify_event_t *)ev;
+
+      handle_mouse_motion(motion_event);
       break;
     case XCB_KEY_PRESS:
-      printf("Keyboard Pressed\n");
+      printf("[Event] Key press\n");
       xcb_key_press_event_t *key_event = (xcb_key_press_event_t *)ev;
       handle_key_press(key_event);
       break;
     case XCB_MAP_REQUEST:
-      printf("Map request\n");
+      printf("[Event] Map request\n");
       xcb_map_request_event_t *map_event = (xcb_map_request_event_t *)ev;
       handle_map_request(map_event->window);
       break;
     default:
-      printf("Unknown event: %d\n", ev->response_type);
+      printf("[Event] Unknown, %d\n", ev->response_type);
       xcb_flush(conn);
       break;
     }

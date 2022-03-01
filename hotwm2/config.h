@@ -23,7 +23,8 @@ static const Key KEYS[] = {
  { MODKEY,          XK_k,               active_down,      {} },
  { MODKEY|ShiftMask,XK_Return,          toggle,           {} },
  { MODKEY,          XK_m,               set_layout,       {.layout = mono} },
- { MODKEY,          XK_s,               set_layout,       {.layout = stacked} }
+ { MODKEY,          XK_s,               set_layout,       {.layout = stacked} },
+ { MODKEY,          XK_f,               set_layout,       {.layout = floating} }
 };
 
 //static const Button BUTTONS[] = {

@@ -18,8 +18,6 @@
 	for (i = 0; i < manager_session->window_count; i++) {
 		Manager_window* window = manager_session->window[i];
 
-		printf("%d", window->id);
-
 		if (i == manager_session->active_window) {
 
 			manager_window_update(manager_session, window);

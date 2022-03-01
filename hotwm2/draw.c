@@ -29,7 +29,7 @@ void draw_text(xcb_window_t window, int x, int y, const char *text,
   uint32_t values[] = {color};
   xcb_change_gc(draw->conn, draw->gc, XCB_GC_FOREGROUND, values);
 
-  values_fonts[] = {font};
+  uint32_t values_fonts[] = {font};
   xcb_image_text_8(draw->conn, strlen(text), window, draw->gc, x, y, text);
   //  xcb_flush(draw->conn)
 }
