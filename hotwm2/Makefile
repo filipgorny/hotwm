@@ -6,7 +6,9 @@ PREFIX = /usr/local
 LDLIBS = -lm
 BINDIR = $(PREFIX)/bin
 MANDIR = $(PREFIX)/share/man
+OBJDIR = $(PREFIX)/obj
 DEPS = config.h draw.h main.h gui.h window.h layout.h arg.h input.h client.h mouse.h
+SRCS = main.c draw.c gui.c window.c client.c mouse.c
 OBJS = main.o draw.o gui.o window.o client.o mouse.o
 
 all: hotwm
@@ -19,11 +21,11 @@ install: all
 	chmod 755 $(DESTDIR)$(BINDIR)/main
 	chmod 644 $(DESTDIR)$(MANDIR)/man1/main.1
 
-%.o: %.c $(DEPS)
-	$(CC) $(ALL_CFLAGS) -c $< -o $@
+%.o: $(SRCS) $(DEPS)
+	$(CC) $(ALL_CFLAGS) -c $< -o $(OBJDIR)/$@
 	
-hotwm: $(OBJS)
-	$(CC) $(ALL_LDFLAGS) $(OBJS) $(LDLIBS) -o hotwm
+hotwm: $(OBJDIR)/$(OBJS)
+	$(CC) $(ALL_LDFLAGS) $(OBJDIR)/$(OBJS) $(LDLIBS) -o $(BINDIR)/hotwm
 
 clean:
 	rm -f main *.o
