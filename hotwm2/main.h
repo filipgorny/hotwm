@@ -2,6 +2,7 @@
 #include "input.h"
 #include "layout.h"
 #include "mouse.h"
+#include <sys/types.h>
 #include <xcb/xproto.h>
 
 #ifndef MAIN_H
@@ -33,6 +34,7 @@ typedef struct {
   Client *main_client;
   Client *selected_client;
   Mouse *mouse;
+  u_int64_t current_index;
 } Session;
 
 static void spawn(const Arg *arg);
@@ -58,5 +60,6 @@ static xcb_window_t create_parent(Client *client);
 static Client *session_get_client_by_window(xcb_window_t window);
 static Client *session_get_client_by_cords(int x, int y);
 static void session_select_client(Client *client);
+static void session_raise_client(Client *client);
 
 #endif

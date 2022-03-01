@@ -1,3 +1,4 @@
+#include <sys/types.h>
 #include <xcb/xcb.h>
 
 
@@ -15,6 +16,7 @@ struct Client {
   int is_selected;
   xcb_connection_t *conn;
   int display_offset_x, display_offset_y;
+  u_int64_t index;
 };
 
 char *client_get_name(Client *client);

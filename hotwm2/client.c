@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <sys/types.h>
 #include <xcb/xcb.h>
 
 #include "client.h"
@@ -24,30 +25,32 @@ char *client_get_name(Client *client) {
 }
 
 Client *client_put_on_top(Client *client, Client *target) {
-  printf("Lookinf for selected client\n");
-  if (client == target) {
+  int cx = client->x;
+  int cy = client->y;
+
+  client->x = target->x;
+  client->y = target->y;
+
+  target->x = cx;
+  target->y = cy;
+
+  if (target != NULL && client == target) {
     return client;
   }
 
   Client *next = target->next;
-  printf("AA1\n");
 
   target->next = client;
 
   Client *c = client;
-  printf("AA2\n");
-  while (c) {
-    if (!c->next) {
-      c->next = next;
 
-      break;
-    }
-
+  while (c->next != NULL) {
     c = c->next;
-  }
-  printf("AA3\n");
 
-  target->next = client;
+    if (c->next == target) {
+      c->next = next;
+    }
+  }
 
   return target;
 }

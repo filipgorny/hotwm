@@ -99,6 +99,8 @@ Client *create_client(xcb_window_t window) {
   c->is_selected = 0;
   c->conn = conn;
 
+  c->index = session->current_index++;
+
   return c;
 }
 
@@ -264,9 +266,7 @@ void handle_button_press(xcb_button_press_event_t *ev) {
   Client *c = session_get_client_by_cords(ev->event_x, ev->event_y);
 
   if (c) {
-    session_select_client(c);
-
-    printf("Selected client: %d\n", session->selected_client);
+    session_raise_client(c);
   }
 }
 
@@ -518,10 +518,19 @@ Client *session_get_client_by_cords(int x, int y) {
 }
 
 void session_select_client(Client *client) {
-  session->selected_client = client_put_on_top(
+  session->selected_client = client;
+}
+
+void session_raise_client(Client *client) {
+  session_select_client(client);
+
+  xcb_circulate_window(client->conn, XCB_CIRCULATE_LOWER_HIGHEST,
+                       client->parent);
+
+  session->current_monitor->current_desktop->clients = client_put_on_top(
       session->current_monitor->current_desktop->clients, client);
 
-  printf("Selected client: %s\n", session->selected_client);
+  redraw();
 }
 
 int main() {
