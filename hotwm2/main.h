@@ -5,6 +5,9 @@
 #include <sys/types.h>
 #include <xcb/xproto.h>
 
+#define false 0
+#define true 1
+
 #ifndef MAIN_H
 #define MAIN_H
 

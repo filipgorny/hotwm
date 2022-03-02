@@ -17,6 +17,7 @@ struct Client {
   xcb_connection_t *conn;
   int display_offset_x, display_offset_y;
   u_int64_t index;
+  int decorate;
 };
 
 char *client_get_name(Client *client);

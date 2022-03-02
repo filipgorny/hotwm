@@ -339,9 +339,9 @@ void update_client_geometry(Client *c) {
   target_window = c->window;
 
   vals[0] = WINDOW_PADDING;
-  vals[1] = TITLE_BAR_HEIGHT;
+  vals[1] = c->decorate ? TITLE_BAR_HEIGHT : WINDOW_PADDING;
   vals[2] = c->width - WINDOW_PADDING * 2;
-  vals[3] = c->height - TITLE_BAR_HEIGHT - WINDOW_PADDING;
+  vals[3] = c->height - (c->decorate ? TITLE_BAR_HEIGHT : 0) - WINDOW_PADDING;
   vals[4] = 0;
   xcb_configure_window(conn, target_window,
                        XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
@@ -402,6 +402,14 @@ void layout_stacked() {
   session->main_client->height =
       session->current_monitor->mh - BAR_MARGIN - 2 * GAP_WIDTH;
 
+  c = session->current_monitor->current_desktop->clients;
+
+  do {
+    c->decorate = c->is_floating ? true : false;
+    c = c->next;
+  } while (c);
+
+  session->main_client->decorate = true;
   update_client_geometry(session->main_client);
 
   c = session->current_monitor->current_desktop->clients;
@@ -422,13 +430,13 @@ void layout_stacked() {
                         length);
 
       update_client_geometry(c);
-
       current_y += c->height + GAP_WIDTH;
     }
 
     c = c->next;
   }
 
+  xcb_flush(conn);
   xcb_flush(conn);
 }
 
