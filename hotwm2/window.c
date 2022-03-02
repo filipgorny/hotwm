@@ -1,7 +1,7 @@
 #include "window.h"
 #include <xcb/xcb.h>
 
-#include "main.h"
+#include "wm.h"
 
 char *window_get_name(Client *client) {
   xcb_window_t window = client->window;

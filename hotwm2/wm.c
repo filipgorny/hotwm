@@ -1,22 +1,21 @@
 #include <X11/X.h>
 #include <X11/Xutil.h>
+#include <X11/keysym.h>
 #include <cairo/cairo-xcb.h>
 #include <cairo/cairo.h>
 #include <spawn.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/socket.h>
 #include <xcb/randr.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xproto.h>
 
-#include "main.h"
-
 #include "config.h"
-
 #include "gui.h"
-
 #include "mouse.h"
+#include "wm.h"
 
 const xcb_setup_t *setup;
 xcb_generic_event_t *ev;
@@ -34,9 +33,10 @@ Session *init_session() {
   session = malloc(sizeof(Session));
   session->monitors = create_monitor(0);
   session->current_monitor = session->monitors;
-  session->selected_client = NULL;
-  session->main_client = NULL;
+  session->current_monitor->current_desktop->selected_client = NULL;
+  session->current_monitor->current_desktop->main_client = NULL;
   session->mouse = malloc(sizeof(Mouse));
+  session->bookmarks = NULL;
 
   return session;
 }
@@ -61,6 +61,7 @@ xcb_window_t create_parent(Client *client) {
 Desktop *create_desktop() {
   Desktop *desktop = malloc(sizeof(Desktop));
   desktop->clients = NULL;
+  desktop->next = NULL;
 
   desktop->window = xcb_generate_id(conn);
 
@@ -119,26 +120,12 @@ Client *create_client(xcb_window_t window) {
   return c;
 }
 
-void select_client(Client *client) {
-  Client *c = session->current_monitor->current_desktop->clients;
-
-  for (; c != NULL; c = c->next) {
-    if (c == client) {
-      c->is_selected = 1;
-    } else {
-      c->is_selected = 0;
-    }
-  }
-
-  session->selected_client = client;
-}
-
 void active_down() {
   Client *c = session->current_monitor->current_desktop->clients;
 
   while (c->next) {
-    if (c->next == session->selected_client) {
-      select_client(c);
+    if (c->next == session->current_monitor->current_desktop->selected_client) {
+      session_select_client(c);
 
       redraw();
 
@@ -153,7 +140,7 @@ void active_up() {
   Client *c = session->current_monitor->current_desktop->clients;
 
   if (!c->next) {
-    select_client(c);
+    session_select_client(c);
 
     redraw();
 
@@ -161,8 +148,8 @@ void active_up() {
   }
 
   while (c->next) {
-    if (c == session->selected_client) {
-      select_client(c->next);
+    if (c == session->current_monitor->current_desktop->selected_client) {
+      session_select_client(c->next);
 
       redraw();
 
@@ -179,17 +166,18 @@ void set_layout(const Arg *arg) {
 }
 
 void toggle() {
-  session->main_client = session->selected_client;
+  session->current_monitor->current_desktop->main_client =
+      session->current_monitor->current_desktop->selected_client;
   redraw();
 
   return;
   Client *c = session->current_monitor->current_desktop->clients;
 
   while (c->next) {
-    if (c == session->selected_client) {
-      Client *current = session->main_client;
+    if (c == session->current_monitor->current_desktop->selected_client) {
+      Client *current = session->current_monitor->current_desktop->main_client;
 
-      session->main_client = c;
+      session->current_monitor->current_desktop->main_client = c;
       c = current;
       c->next = current->next;
 
@@ -224,9 +212,9 @@ void handle_map_request(xcb_window_t window) {
       XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY | XCB_EVENT_MASK_PROPERTY_CHANGE;
   xcb_change_window_attributes_checked(conn, window, XCB_CW_EVENT_MASK, values);
 
-  session->main_client = main_client;
+  session->current_monitor->current_desktop->main_client = main_client;
 
-  select_client(main_client);
+  session_select_client(main_client);
 
   redraw();
 }
@@ -239,6 +227,7 @@ void handle_key_press(xcb_key_press_event_t *event) {
   xcb_key_symbols_free(keysyms);
 
   int i;
+  int keycode, number;
 
   for (i = 0; i < LENGTH(KEYS); i++) {
     if (keysym == KEYS[i].keysym &&
@@ -249,11 +238,28 @@ void handle_key_press(xcb_key_press_event_t *event) {
 
       return;
     }
+
+    keycode = *xcb_key_symbols_get_keycode(xcb_key_symbols_alloc(conn), keysym);
+
+    printf("[KEY] Keycode: %d\n", keycode);
+
+    if (keycode > 10 && keycode < 19) {
+      number = keycode - 9;
+
+      if (CLEANMASK(event->state) == MODKEY) {
+        bookmark_add(
+            number, session->current_monitor->current_desktop->selected_client);
+      } else {
+        bookmark_show(number);
+      }
+    }
   }
 
-  if (session->main_client) {
-    xcb_send_event(conn, 0, session->selected_client->window,
-                   XCB_EVENT_MASK_STRUCTURE_NOTIFY, (char *)event);
+  if (session->current_monitor->current_desktop->main_client) {
+    xcb_send_event(
+        conn, 0,
+        session->current_monitor->current_desktop->selected_client->window,
+        XCB_EVENT_MASK_STRUCTURE_NOTIFY, (char *)event);
   }
 
   xcb_flush(conn);
@@ -286,7 +292,7 @@ void handle_button_press(xcb_button_press_event_t *ev) {
 }
 
 void handle_button_release(xcb_button_release_event_t *ev) {
-  Client *c = session->selected_client;
+  Client *c = session->current_monitor->current_desktop->selected_client;
 
   if (c) {
     if (mouse_get_state() == MOUSE_STATE_BUTTON1_DOWN_META) {
@@ -303,7 +309,7 @@ void handle_button_release(xcb_button_release_event_t *ev) {
 void handle_mouse_motion(xcb_motion_notify_event_t *event) {
   mouse_update_cords(event->root_x, event->root_y);
 
-  Client *c = session->selected_client;
+  Client *c = session->current_monitor->current_desktop->selected_client;
 
   if (c) {
     if (mouse_get_state() == MOUSE_STATE_BUTTON1_DOWN_META) {
@@ -349,7 +355,7 @@ void update_client_geometry(Client *c) {
                            XCB_CONFIG_WINDOW_BORDER_WIDTH,
                        vals);
 
-  if (c == session->selected_client) {
+  if (c == session->current_monitor->current_desktop->selected_client) {
     vals[0] = BORDER_COLOR_ACTIVE;
   } else {
     vals[0] = BORDER_COLOR_INACTIVE;
@@ -374,7 +380,8 @@ void layout_stacked() {
   int length = 0;
 
   do {
-    if (c->is_open && c != session->main_client) {
+    if (c->is_open &&
+        c != session->current_monitor->current_desktop->main_client) {
       length++;
     }
   } while (c = c->next);
@@ -385,21 +392,22 @@ void layout_stacked() {
 
   int i;
   if (length > 0) {
-    session->main_client->x =
+    session->current_monitor->current_desktop->main_client->x =
         STACK_WIDTH_PERCENT * 0.01f * session->current_monitor->mw + GAP_WIDTH;
 
-    session->main_client->width =
+    session->current_monitor->current_desktop->main_client->width =
         session->current_monitor->mw - 2 * GAP_WIDTH -
         STACK_WIDTH_PERCENT * 0.01f * session->current_monitor->mw;
 
   } else {
-    session->main_client->x = GAP_WIDTH;
+    session->current_monitor->current_desktop->main_client->x = GAP_WIDTH;
 
-    session->main_client->width = session->current_monitor->mw - 2 * GAP_WIDTH;
+    session->current_monitor->current_desktop->main_client->width =
+        session->current_monitor->mw - 2 * GAP_WIDTH;
   }
 
-  session->main_client->y = GAP_WIDTH;
-  session->main_client->height =
+  session->current_monitor->current_desktop->main_client->y = GAP_WIDTH;
+  session->current_monitor->current_desktop->main_client->height =
       session->current_monitor->mh - BAR_MARGIN - 2 * GAP_WIDTH;
 
   c = session->current_monitor->current_desktop->clients;
@@ -409,8 +417,9 @@ void layout_stacked() {
     c = c->next;
   } while (c);
 
-  session->main_client->decorate = true;
-  update_client_geometry(session->main_client);
+  session->current_monitor->current_desktop->main_client->decorate = true;
+  update_client_geometry(
+      session->current_monitor->current_desktop->main_client);
 
   c = session->current_monitor->current_desktop->clients;
 
@@ -418,7 +427,8 @@ void layout_stacked() {
     xcb_window_t target_window = c->parent;
     xcb_map_window(conn, target_window);
 
-    if (!c->is_floating && c->is_open && c != session->main_client) {
+    if (!c->is_floating && c->is_open &&
+        c != session->current_monitor->current_desktop->main_client) {
 
       c->x = GAP_WIDTH;
       c->y = current_y;
@@ -453,16 +463,20 @@ void layout_mono() {
     c = c->next;
   }
 
-  xcb_map_window(conn, session->selected_client->parent);
+  xcb_map_window(
+      conn, session->current_monitor->current_desktop->selected_client->parent);
 
-  session->selected_client->x = GAP_WIDTH;
-  session->selected_client->y = BAR_MARGIN + GAP_WIDTH;
-  session->selected_client->width =
+  session->current_monitor->current_desktop->selected_client->x = GAP_WIDTH;
+  session->current_monitor->current_desktop->selected_client->y = GAP_WIDTH;
+  session->current_monitor->current_desktop->selected_client->width =
       session->current_monitor->mw - 2 * GAP_WIDTH;
-  session->selected_client->height =
+  session->current_monitor->current_desktop->selected_client->height =
       session->current_monitor->mh - BAR_MARGIN - 2 * GAP_WIDTH;
 
-  update_client_geometry(session->selected_client);
+  session->current_monitor->current_desktop->selected_client->decorate = true;
+
+  update_client_geometry(
+      session->current_monitor->current_desktop->selected_client);
 }
 
 void layout_floating() {
@@ -507,10 +521,10 @@ void redraw() {
 }
 
 void toggle_floating(const Arg *arg) {
-  if (session->selected_client->is_floating) {
-    session->selected_client->is_floating = 0;
+  if (session->current_monitor->current_desktop->selected_client->is_floating) {
+    session->current_monitor->current_desktop->selected_client->is_floating = 0;
   } else {
-    session->selected_client->is_floating = 1;
+    session->current_monitor->current_desktop->selected_client->is_floating = 1;
   }
 
   redraw();
@@ -548,7 +562,11 @@ Client *session_get_client_by_cords(int x, int y) {
 }
 
 void session_select_client(Client *client) {
-  session->selected_client = client;
+  session->current_monitor->current_desktop->selected_client = client;
+}
+
+void session_set_main_client(Client *client) {
+  session->current_monitor->current_desktop->main_client = client;
 }
 
 void session_raise_client(Client *client) {
@@ -563,23 +581,111 @@ void session_raise_client(Client *client) {
   redraw();
 }
 
+void desktop_select(Desktop *desktop) {
+  session->current_monitor->current_desktop->next = desktop;
+
+  xcb_unmap_window(conn, session->current_monitor->current_desktop->window);
+
+  session->current_monitor->current_desktop = desktop;
+
+  xcb_map_window(conn, desktop->window);
+
+  redraw();
+
+  printf("New desktop selected.\n");
+}
+
 void desktop_next() {
   Desktop *next_desktop = session->current_monitor->current_desktop->next;
 
   if (!next_desktop) {
     next_desktop = create_desktop();
+
     session->current_monitor->current_desktop->next = next_desktop;
-
-    xcb_unmap_window(conn, session->current_monitor->current_desktop->window);
-
-    session->current_monitor->current_desktop = next_desktop;
-
-    xcb_map_window(conn, next_desktop->window);
   }
 
-  // redraw();
+  desktop_select(next_desktop);
+}
 
-  printf("Desktop next\n");
+void desktop_previous() {
+  Desktop *d = session->current_monitor->desktops;
+  Desktop *previous = NULL;
+
+  while (d) {
+    if (d == session->current_monitor->current_desktop) {
+      if (previous) {
+        desktop_select(previous);
+
+        return;
+      }
+    }
+
+    previous = d;
+    d = d->next;
+  }
+}
+
+void bookmark_add(int number, Client *client) {
+  Bookmark *bookmark;
+  Bookmark *b;
+
+  bookmark = malloc(sizeof(Bookmark));
+  bookmark->number = number;
+  bookmark->client = client;
+  bookmark->desktop = session->current_monitor->current_desktop;
+
+  b = session->bookmarks;
+
+  if (b == NULL) {
+    session->bookmarks = malloc(sizeof(Bookmark));
+    session->bookmarks->number = bookmark->number;
+    session->bookmarks->client = bookmark->client;
+    session->bookmarks->desktop = bookmark->desktop;
+
+    return;
+  }
+
+  while (b) {
+    if (b->next == NULL) {
+      b->next = bookmark;
+
+      return;
+    }
+
+    if (b->number == number) {
+      b->client = bookmark->client;
+      b->desktop = bookmark->desktop;
+
+      return;
+    }
+
+    b = b->next;
+  }
+
+  printf("[BOOKMARK] Added bookmark %d\n", number);
+}
+
+void bookmark_show(int number) {
+  printf("[BOOKMARK] Showing bookmark %d\n", number);
+
+  Bookmark *bookmark = session->bookmarks;
+
+  if (bookmark == NULL) {
+    return;
+  }
+
+  Desktop *desktop = session->current_monitor->desktops;
+  Client *client = desktop->clients;
+  while (bookmark) {
+    if (bookmark->number == number) {
+      printf("[BOOKMARK] Found bookmark\n");
+
+      //  desktop_select(bookmark->desktop);
+      session_select_client(bookmark->client);
+      session_set_main_client(client);
+    }
+    bookmark = bookmark->next;
+  }
 }
 
 int main() {
@@ -603,6 +709,9 @@ int main() {
   mouse_init();
 
   redraw();
+
+  int socket_desc;
+  socket_desc = socket(AF_INET, SOCK_STREAM, 0);
 
   int values[3];
 

@@ -24,6 +24,9 @@ struct Desktop {
   Client *clients;
   xcb_window_t window;
   Desktop *next;
+  Client *main_client;
+  Client *selected_client;
+ 
 };
 
 typedef struct Monitor Monitor;
@@ -36,13 +39,20 @@ struct Monitor {
   enum layout layout
 };
 
+typedef struct Bookmark Bookmark;
+struct Bookmark {
+    Client *client;
+    Desktop *desktop;
+    int number;
+    Bookmark *next;
+};
+
 typedef struct {
   Monitor *monitors;
   Monitor *current_monitor;
-  Client *main_client;
-  Client *selected_client;
   Mouse *mouse;
   u_int64_t current_index;
+  Bookmark* bookmarks;
 } Session;
 
 static void spawn(const Arg *arg);
@@ -68,7 +78,11 @@ static xcb_window_t create_parent(Client *client);
 static Client *session_get_client_by_window(xcb_window_t window);
 static Client *session_get_client_by_cords(int x, int y);
 static void session_select_client(Client *client);
+static void session_set_main_client(Client *client);
 static void session_raise_client(Client *client);
 static void desktop_next();
+static void desktop_previous();
+static void bookmark_add(int number, Client *client);
+static void bookmark_show(int number);
 
 #endif

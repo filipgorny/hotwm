@@ -6,10 +6,12 @@ PREFIX = /usr/local
 LDLIBS = -lm
 BINDIR = $(PREFIX)/bin
 MANDIR = $(PREFIX)/share/man
-DEPS = config.h draw.h main.h gui.h window.h layout.h arg.h input.h client.h mouse.h 
-OBJS = main.o draw.o gui.o window.o client.o mouse.o
+DEPS = config.h draw.h bar.h wm.h gui.h window.h layout.h arg.h input.h client.h mouse.h notify.h
+OBJS_WM = wm.o draw.o gui.o window.o client.o mouse.o notify.o
+OBJS_BAR = bar.o draw.o gui.o window.o client.o mouse.o notify.o
 
-all: hotwm
+
+all: wm bar
 
 install: all
 	mkdir -p $(DESTDIR)$(BINDIR)
@@ -22,8 +24,12 @@ install: all
 %.o: %.c $(DEPS)
 	$(CC) $(ALL_CFLAGS) -c $< -o $@
 	
-hotwm: $(OBJS)
-	$(CC) $(ALL_LDFLAGS) $(OBJS) $(LDLIBS) -o hotwm
+wm: $(OBJS_WM)
+	$(CC) $(ALL_LDFLAGS) $(OBJS_WM) $(LDLIBS) -o hotwm
+
+bar: $(OBJS_BAR)
+	$(CC) $(ALL_LDFLAGS) $(OBJS_BAR) $(LDLIBS) -o hotbar
+
 
 clean:
 	rm -f main *.o

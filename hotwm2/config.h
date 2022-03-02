@@ -2,7 +2,7 @@
 #include <xcb/xproto.h>
 #include <X11/Xutil.h>
 #include "input.h"
-#include "main.h"
+#include "wm.h"
 
 static const int BORDER_COLOR_INACTIVE = 0x00aaaaaa;
 static const int BORDER_COLOR_ACTIVE = 0x00ff0000;
@@ -25,7 +25,8 @@ static const Key KEYS[] = {
  { MODKEY,          XK_m,               set_layout,       {.layout = mono} },
  { MODKEY,          XK_s,               set_layout,       {.layout = stacked} },
  { MODKEY,          XK_f,               set_layout,       {.layout = floating} },
- { MODKEY,          XK_w,               desktop_next,     {} }
+ { MODKEY,          XK_w,               desktop_next,     {} },
+ { MODKEY,          XK_q,               desktop_previous, {} }
 };
 
 //static const Button BUTTONS[] = {
