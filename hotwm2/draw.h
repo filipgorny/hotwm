@@ -15,4 +15,4 @@ typedef struct {
 void draw_init(xcb_connection_t *conn, xcb_screen_t *screen);
 
 void draw_rect(xcb_window_t window, int x, int y, int w, int h, const uint32_t color);
-void draw_text(xcb_window_t window, int x, int y, const char *text, const uint32_t color, char *font);
+void draw_text(xcb_window_t window, int x, int y, const char *text, const uint32_t color, const uint32_t background_color, char *font);

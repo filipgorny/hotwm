@@ -25,9 +25,12 @@ void draw_rect(xcb_window_t window, int x, int y, int w, int h,
 }
 
 void draw_text(xcb_window_t window, int x, int y, const char *text,
-               const uint32_t color, char *font) {
-  uint32_t values[] = {color};
-  xcb_change_gc(draw->conn, draw->gc, XCB_GC_FOREGROUND, values);
+               const uint32_t color, const uint32_t background_color,
+               char *font) {
+  uint32_t values[] = {color, background_color};
+
+  xcb_change_gc(draw->conn, draw->gc, XCB_GC_FOREGROUND | XCB_GC_BACKGROUND,
+                values);
 
   uint32_t values_fonts[] = {font};
   xcb_image_text_8(draw->conn, strlen(text), window, draw->gc, x, y, text);

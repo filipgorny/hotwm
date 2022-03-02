@@ -6,8 +6,8 @@ PREFIX = /usr/local
 LDLIBS = -lm
 BINDIR = $(PREFIX)/bin
 MANDIR = $(PREFIX)/share/man
-DEPS = config.h draw.h main.h gui.h background.h window.h layout.h arg.h input.h client.h mouse.h 
-OBJS = main.o draw.o gui.o window.o client.o mouse.o background.o
+DEPS = config.h draw.h main.h gui.h window.h layout.h arg.h input.h client.h mouse.h 
+OBJS = main.o draw.o gui.o window.o client.o mouse.o
 
 all: hotwm
 

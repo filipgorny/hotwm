@@ -24,7 +24,8 @@ static const Key KEYS[] = {
  { MODKEY|ShiftMask,XK_Return,          toggle,           {} },
  { MODKEY,          XK_m,               set_layout,       {.layout = mono} },
  { MODKEY,          XK_s,               set_layout,       {.layout = stacked} },
- { MODKEY,          XK_f,               set_layout,       {.layout = floating} }
+ { MODKEY,          XK_f,               set_layout,       {.layout = floating} },
+ { MODKEY,          XK_w,               desktop_next,     {} }
 };
 
 //static const Button BUTTONS[] = {
@@ -32,7 +33,7 @@ static const Key KEYS[] = {
 //}
 //
 
-static const int TITLE_BAR_HEIGHT = 32;
+static const int TITLE_BAR_HEIGHT = 28;
 static const int WINDOW_PADDING = 2;
 
 static const int COLOR_TITLE_INACTIVE = 0x00aaaaaa;
@@ -41,6 +42,7 @@ static const int COLOR_BORDER_INACTIVE = 0x00222222;
 static const int COLOR_BORDER_ACTIVE = 0x00555555;
 static const int COLOR_TITLE_TEXT_INACTIVE = 0x00ffffff;
 static const int COLOR_TITLE_TEXT_ACTIVE = 0x00ffffff;
+static const int COLOR_DESKTOP = 0x000c2740;
 
 static char *GUI_DEFAULT_FONT = "hack:size=12";
 

@@ -15,9 +15,14 @@ static unsigned int numlockmask = 0;
   (mask & ~(numlockmask | LockMask) &                                          \
    (ShiftMask | ControlMask | Mod1Mask | Mod2Mask | Mod3Mask | Mod4Mask |      \
     Mod5Mask))
-typedef struct {
+
+typedef struct Desktop Desktop;
+struct Desktop {
   Client *clients;
-} Desktop;
+  xcb_window_t window;
+  Desktop *next;
+};
+
 typedef struct Monitor Monitor;
 struct Monitor {
   int num;
@@ -61,5 +66,6 @@ static Client *session_get_client_by_window(xcb_window_t window);
 static Client *session_get_client_by_cords(int x, int y);
 static void session_select_client(Client *client);
 static void session_raise_client(Client *client);
+static void desktop_next();
 
 #endif

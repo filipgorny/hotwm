@@ -10,7 +10,6 @@
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xproto.h>
 
-#include "background.h"
 #include "main.h"
 
 #include "config.h"
@@ -63,6 +62,17 @@ Desktop *create_desktop() {
   Desktop *desktop = malloc(sizeof(Desktop));
   desktop->clients = NULL;
 
+  desktop->window = xcb_generate_id(conn);
+
+  xcb_create_window(conn, screen->root_depth, desktop->window, root, 0, 0,
+                    screen->width_in_pixels, screen->height_in_pixels, 0,
+                    XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual, 0,
+                    NULL);
+
+  xcb_map_window(conn, desktop->window);
+
+  xcb_flush(conn);
+
   return desktop;
 }
 
@@ -101,6 +111,10 @@ Client *create_client(xcb_window_t window) {
   c->conn = conn;
 
   c->index = session->current_index++;
+
+  xcb_reparent_window(conn, c->parent,
+                      session->current_monitor->current_desktop->window,
+                      WINDOW_PADDING, TITLE_BAR_HEIGHT);
 
   return c;
 }
@@ -353,6 +367,10 @@ void update_client_geometry(Client *c) {
 void layout_stacked() {
   Client *c = session->current_monitor->current_desktop->clients;
 
+  if (c == NULL) {
+    return;
+  }
+
   int length = 0;
 
   do {
@@ -363,7 +381,7 @@ void layout_stacked() {
 
   int window_height = session->current_monitor->mh - BAR_MARGIN - 2 * GAP_WIDTH;
 
-  int current_y = BAR_MARGIN + GAP_WIDTH;
+  int current_y = GAP_WIDTH;
 
   int i;
   if (length > 0) {
@@ -380,7 +398,7 @@ void layout_stacked() {
     session->main_client->width = session->current_monitor->mw - 2 * GAP_WIDTH;
   }
 
-  session->main_client->y = BAR_MARGIN + GAP_WIDTH;
+  session->main_client->y = GAP_WIDTH;
   session->main_client->height =
       session->current_monitor->mh - BAR_MARGIN - 2 * GAP_WIDTH;
 
@@ -466,8 +484,6 @@ void layout_floating() {
 }
 
 void redraw() {
-  background_draw(screen, root);
-
   if (session->current_monitor->layout == mono) {
     layout_mono();
   } else if (session->current_monitor->layout == stacked) {
@@ -475,6 +491,9 @@ void redraw() {
   } else if (session->current_monitor->layout == floating) {
     layout_floating();
   }
+
+  draw_rect(session->current_monitor->current_desktop->window, 0, 0,
+            screen->width_in_pixels, screen->height_in_pixels, COLOR_DESKTOP);
 
   xcb_flush(conn);
 }
@@ -536,6 +555,25 @@ void session_raise_client(Client *client) {
   redraw();
 }
 
+void desktop_next() {
+  Desktop *next_desktop = session->current_monitor->current_desktop->next;
+
+  if (!next_desktop) {
+    next_desktop = create_desktop();
+    session->current_monitor->current_desktop->next = next_desktop;
+
+    xcb_unmap_window(conn, session->current_monitor->current_desktop->window);
+
+    session->current_monitor->current_desktop = next_desktop;
+
+    xcb_map_window(conn, next_desktop->window);
+  }
+
+  // redraw();
+
+  printf("Desktop next\n");
+}
+
 int main() {
   conn = xcb_connect(NULL, NULL);
 
@@ -555,6 +593,8 @@ int main() {
 
   draw_init(conn, screen);
   mouse_init();
+
+  redraw();
 
   int values[3];
 
