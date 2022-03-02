@@ -10,6 +10,7 @@
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xproto.h>
 
+#include "background.h"
 #include "main.h"
 
 #include "config.h"
@@ -465,6 +466,8 @@ void layout_floating() {
 }
 
 void redraw() {
+  background_draw(screen, root);
+
   if (session->current_monitor->layout == mono) {
     layout_mono();
   } else if (session->current_monitor->layout == stacked) {
