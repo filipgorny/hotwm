@@ -6,12 +6,8 @@ PREFIX = /usr/local
 LDLIBS = -lm
 BINDIR = $(PREFIX)/bin
 MANDIR = $(PREFIX)/share/man
-OBJDIR = obj
-SRCDIR = src
-DISTDIR = dist
-DEPS = config.h draw.h main.h gui.h window.h layout.h arg.h input.h client.h mouse.h
-SRCS = main.c draw.c gui.c window.c client.c mouse.c
-OBJS = main.o draw.o gui.o window.o client.o mouse.o
+DEPS = config.h draw.h main.h gui.h background.h window.h layout.h arg.h input.h client.h mouse.h 
+OBJS = main.o draw.o gui.o window.o client.o mouse.o background.o
 
 all: hotwm
 
@@ -23,18 +19,18 @@ install: all
 	chmod 755 $(DESTDIR)$(BINDIR)/main
 	chmod 644 $(DESTDIR)$(MANDIR)/man1/main.1
 
-$(addprefix $(OBJDIR)/,$(OBJS)): $(addprefix $(SRCDIR)/,$(SRCS) $(DEPS))
+%.o: %.c $(DEPS)
 	$(CC) $(ALL_CFLAGS) -c $< -o $@
 	
-hotwm: $(OBJDIR)/$(OBJS)
-	$(CC) $(ALL_LDFLAGS) $(OBJDIR)/$(OBJS) $(LDLIBS) -o $(DISTDIR)/hotwm
+hotwm: $(OBJS)
+	$(CC) $(ALL_LDFLAGS) $(OBJS) $(LDLIBS) -o hotwm
 
 clean:
-	rm -f dist/hotwm obj/*.o
+	rm -f main *.o
 
 uninstall:
-	rm -f $(DESTDIR)$(BINDIR)/hotwm
-	rm -f $(DESTDIR)$(MANDIR)/man1/hotwm.1
+	rm -f $(DESTDIR)$(BINDIR)/main
+	rm -f $(DESTDIR)$(MANDIR)/man1/main.1
 
 .PHONY: all install uninstall clean
 
