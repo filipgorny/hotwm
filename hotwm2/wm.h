@@ -82,6 +82,7 @@ static void session_set_main_client(Client *client);
 static void session_raise_client(Client *client);
 static void desktop_next();
 static void desktop_previous();
+static void desktop_select(Desktop *desktop);
 static void bookmark_add(int number, Client *client);
 static void bookmark_show(int number);
 

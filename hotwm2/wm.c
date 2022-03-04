@@ -1,7 +1,6 @@
 #include <X11/X.h>
 #include <X11/Xutil.h>
 #include <X11/keysym.h>
-#include <cairo/cairo-xcb.h>
 #include <cairo/cairo.h>
 #include <spawn.h>
 #include <stdio.h>
@@ -212,9 +211,42 @@ void handle_map_request(xcb_window_t window) {
       XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY | XCB_EVENT_MASK_PROPERTY_CHANGE;
   xcb_change_window_attributes_checked(conn, window, XCB_CW_EVENT_MASK, values);
 
-  session->current_monitor->current_desktop->main_client = main_client;
-
+  session_set_main_client(main_client);
   session_select_client(main_client);
+
+  Client *c = session->current_monitor->current_desktop->clients;
+
+  int count = 0;
+
+  while (c) {
+    count++;
+    c = c->next;
+  }
+
+  printf("[COUNT] %d clients active.\n", count);
+
+  if (session->current_monitor->layout == stacked &&
+      count > MAX_WINDOWS_STACKED) {
+    printf("[WINDOW COUNT] Too many windows on one page, %d.\n", count);
+
+    Desktop *new_desktop = session->current_monitor->current_desktop->next;
+
+    while (new_desktop) {
+      new_desktop = new_desktop->next;
+    }
+
+    if (new_desktop == NULL) {
+      new_desktop = create_desktop();
+    }
+
+    desktop_select(new_desktop);
+
+    handle_map_request(main_client->window);
+    // new_desktop->clients = main_client;
+    //
+    //
+    // xcb_reparent_window(conn, main_client->window,
+  }
 
   redraw();
 }
@@ -224,7 +256,6 @@ void handle_key_press(xcb_key_press_event_t *event) {
   xcb_keysym_t keysym;
   keysym =
       (!(keysyms) ? 0 : xcb_key_symbols_get_keysym(keysyms, event->detail, 0));
-  xcb_key_symbols_free(keysyms);
 
   int i;
   int keycode, number;
@@ -239,9 +270,9 @@ void handle_key_press(xcb_key_press_event_t *event) {
       return;
     }
 
-    keycode = *xcb_key_symbols_get_keycode(xcb_key_symbols_alloc(conn), keysym);
+    keycode = *xcb_key_symbols_get_keycode(keysyms, keysym);
 
-    printf("[KEY] Keycode: %d\n", keycode);
+    // printf("[KEY] Keycode: %d\n", keycode);
 
     if (keycode > 10 && keycode < 19) {
       number = keycode - 9;
@@ -262,6 +293,7 @@ void handle_key_press(xcb_key_press_event_t *event) {
         XCB_EVENT_MASK_STRUCTURE_NOTIFY, (char *)event);
   }
 
+  xcb_key_symbols_free(keysyms);
   xcb_flush(conn);
 }
 
@@ -447,7 +479,6 @@ void layout_stacked() {
   }
 
   xcb_flush(conn);
-  xcb_flush(conn);
 }
 
 void layout_mono() {
@@ -562,6 +593,15 @@ Client *session_get_client_by_cords(int x, int y) {
 }
 
 void session_select_client(Client *client) {
+  Client *c;
+
+  while (c) {
+    c->is_selected = false;
+    c = c->next;
+  }
+
+  client->is_selected = true;
+
   session->current_monitor->current_desktop->selected_client = client;
 }
 
@@ -582,23 +622,36 @@ void session_raise_client(Client *client) {
 }
 
 void desktop_select(Desktop *desktop) {
-  session->current_monitor->current_desktop->next = desktop;
-
   xcb_unmap_window(conn, session->current_monitor->current_desktop->window);
 
   session->current_monitor->current_desktop = desktop;
 
   xcb_map_window(conn, desktop->window);
 
+  int vals[5];
+
+  xcb_window_t target_window = desktop->window;
+
+  vals[0] = 0;
+  vals[1] = 0;
+  vals[2] = screen->width_in_pixels;
+  vals[3] = screen->height_in_pixels;
+  vals[4] = 0;
+  xcb_configure_window(conn, target_window,
+                       XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
+                           XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT |
+                           XCB_CONFIG_WINDOW_BORDER_WIDTH,
+                       vals);
+
   redraw();
 
-  printf("New desktop selected.\n");
+  printf("[DESKTOP] New desktop selected.\n");
 }
 
 void desktop_next() {
   Desktop *next_desktop = session->current_monitor->current_desktop->next;
 
-  if (!next_desktop) {
+  if (next_desktop == NULL) {
     next_desktop = create_desktop();
 
     session->current_monitor->current_desktop->next = next_desktop;
@@ -626,6 +679,8 @@ void desktop_previous() {
 }
 
 void bookmark_add(int number, Client *client) {
+  printf("[BOOKMARK] Adding bookmark %d\n", number);
+
   Bookmark *bookmark;
   Bookmark *b;
 
@@ -661,8 +716,6 @@ void bookmark_add(int number, Client *client) {
 
     b = b->next;
   }
-
-  printf("[BOOKMARK] Added bookmark %d\n", number);
 }
 
 void bookmark_show(int number) {
@@ -674,15 +727,17 @@ void bookmark_show(int number) {
     return;
   }
 
-  Desktop *desktop = session->current_monitor->desktops;
-  Client *client = desktop->clients;
   while (bookmark) {
     if (bookmark->number == number) {
       printf("[BOOKMARK] Found bookmark\n");
 
-      //  desktop_select(bookmark->desktop);
+      desktop_select(bookmark->desktop);
       session_select_client(bookmark->client);
-      session_set_main_client(client);
+      session_set_main_client(bookmark->client);
+
+      redraw();
+
+      return;
     }
     bookmark = bookmark->next;
   }

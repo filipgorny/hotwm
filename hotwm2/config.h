@@ -15,6 +15,8 @@ static const int STACK_WIDTH_PERCENT = 35;
 
 static const int BAR_MARGIN = 48;
 
+static const int MAX_WINDOWS_STACKED = 6;
+
 #define MODKEY Mod1Mask
 
 static const Key KEYS[] = {
