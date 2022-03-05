@@ -2,7 +2,10 @@
 
 #include <xcb/xcb_keysyms.h>
 
-#define CALLBACK (*func)(const Arg *);
+#define CALLBACK (*func)(Arg *arg);
+#define MODKEY XCB_MOD_MASK_1
+
+#define KEY_ENTER 0xff0d
 
 typedef union {
   int i;
@@ -15,16 +18,19 @@ typedef struct {
   unsigned int modifiers;
   xcb_keysym_t keysym;
   void CALLBACK
-  Arg arg;
+  char *arg_v;
+  int arg_i;
+  unsigned int arg_ui;
+  float arg_f;
 } Key;
 
 typedef struct {
     int key_index;
-    xcb_key_symbols_t *keysyms;
-    Key keys[];
+    xcb_connection_t *conn;
+    Key *keys[];
 } InputConfig;
 
 InputConfig *input_create_config(xcb_connection_t *conn);
-void input_define_key(InputConfig *config, xcb_keysym_t kesym, unsigned int modifiers, void (*func)(const Arg *), const Arg arg);
+void input_define_key(InputConfig *config, xcb_keysym_t kesym, unsigned int modifiers, void (*func)(Arg*), Arg *arg);
 void input_handle_key_event(InputConfig *config, xcb_key_press_event_t *event);
 void input_config_free(InputConfig *config);

@@ -2,6 +2,7 @@
 #include "input.h"
 #include "screen.h"
 #include "session.h"
+#include "spawn.h"
 #include "window.h"
 #include <stdio.h>
 #include <xcb/xcb.h>
@@ -100,7 +101,14 @@ void handle_mouse_motion(xcb_motion_notify_event_t *event) {
     }*/
 }
 
+void configure() {
+  Arg arg = {.v = "/bin/st"};
+  input_define_key(input_config, KEY_ENTER, MODKEY, spawn, &arg);
+}
+
 int main() {
+  conn = xcb_connect(NULL, NULL);
+
   session = session_start();
   input_config = input_create_config(conn);
 
@@ -109,6 +117,8 @@ int main() {
   xcb_flush(conn);
 
   root = screen->root;
+
+  configure();
 
   int values[3];
 
@@ -142,33 +152,34 @@ int main() {
       printf("[Event] Property changed\n");
       xcb_property_notify_event_t *property_event =
           (xcb_property_notify_event_t *)ev;
+      /*
+            if (property_event->state == XCB_PROPERTY_NEW_VALUE) {
+              if (property_event->atom == XCB_ATOM_WM_NAME) {
+                xcb_get_property_cookie_t cookie = xcb_get_property(
+                    conn, 0, property_event->window, XCB_ATOM_WM_NAME,
+                    XCB_ATOM_STRING, 0, UINT32_MAX);
 
-      if (property_event->state == XCB_PROPERTY_NEW_VALUE) {
-        if (property_event->atom == XCB_ATOM_WM_NAME) {
-          xcb_get_property_cookie_t cookie = xcb_get_property(
-              conn, 0, property_event->window, XCB_ATOM_WM_NAME,
-              XCB_ATOM_STRING, 0, UINT32_MAX);
+                xcb_get_property_reply_t *reply =
+                    xcb_get_property_reply(conn, cookie, NULL);
 
-          xcb_get_property_reply_t *reply =
-              xcb_get_property_reply(conn, cookie, NULL);
+                if (reply) {
+                  char *name = xcb_get_property_value(reply);
+                  if (name) {
+                    Client *c =
+         session->current_monitor->current_desktop->clients;
 
-          if (reply) {
-            char *name = xcb_get_property_value(reply);
-            if (name) {
-              Client *c = session->current_monitor->current_desktop->clients;
+                    while (c) {
+                      if (c->parent == property_event->window) {
+                        c->name = name;
+                        break;
+                      }
 
-              while (c) {
-                if (c->parent == property_event->window) {
-                  c->name = name;
-                  break;
+                      c = c->next;
+                    }
+                  }
                 }
-
-                c = c->next;
               }
-            }
-          }
-        }
-      }
+            }*/
       break;
     case 5: // XCB_EVENT_MASK_BUTTON_RELEASE: // Button release event
       printf("[Event] Button release\n");
