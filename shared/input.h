@@ -7,7 +7,7 @@
 
 #define KEY_ENTER 0xff0d
 
-typedef union {
+typedef struct {
   int i;
   char *v;
 } Arg;
@@ -16,8 +16,7 @@ typedef struct {
   unsigned int modifiers;
   xcb_keysym_t keysym;
   void CALLBACK
-  char *arg_v;
-  int arg_i;
+    Arg *arg;
 } Key;
 
 typedef struct {
