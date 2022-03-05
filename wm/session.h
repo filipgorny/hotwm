@@ -9,6 +9,7 @@ struct Desktop {
     Desktop *prev;
     Desktop *next;
     Client *clients; 
+    Client *current_client;
 };
 
 typedef struct {

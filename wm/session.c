@@ -16,13 +16,18 @@ void session_add_client(Session *session, Client *client) {
 
   if (c == NULL) {
     session->current_desktop->clients = client;
+    session->current_desktop->clients->next = NULL;
 
     return;
   }
 
   while (c) {
+
+    if (c->next == NULL) {
+      c->next = client;
+      break;
+    }
+
     c = c->next;
   }
-
-  c->next = client;
 }

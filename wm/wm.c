@@ -1,4 +1,6 @@
+#include "decorator.h"
 #include "grid.h"
+#include "gui.h"
 #include "input.h"
 #include "screen.h"
 #include "session.h"
@@ -11,18 +13,26 @@
 
 Session *session;
 InputConfig *input_config;
+Gui *gui;
+Decorator *decorator;
 
 xcb_connection_t *conn;
 const xcb_setup_t *setup;
 xcb_drawable_t root;
 xcb_screen_t *screen;
 
+void handle_screen_modify() {
+  // TODO - doesn't work
+  Client *c = session->current_desktop->clients;
+
+  while (c) {
+    decorator_update_window(decorator, c->window);
+
+    c = c->next;
+  }
+}
+
 void handle_map_request(xcb_window_t window) {
-  Window *w = window_create(&window);
-  Client *c = client_create(w);
-
-  session_add_client(session, c);
-
   int values[3];
 
   values[0] =
@@ -32,11 +42,30 @@ void handle_map_request(xcb_window_t window) {
 
   xcb_map_window(conn, window);
 
-  screen_refresh();
+  Window *w = window_create(conn, &window);
+
+  decorator_decorate_window(decorator, w);
+
+  Client *c = client_create(w);
+
+  session_add_client(session, c);
+
+  session->current_desktop->current_client = c;
+  // screen_refresh();
 }
 
 void handle_key_press(xcb_key_press_event_t *event) {
   input_handle_key_event(input_config, event);
+
+  if (session->current_desktop->current_client) {
+    printf("Sending key press to client\n");
+    xcb_send_event(
+        conn, 0,
+        *session->current_desktop->current_client->window->child_window,
+        XCB_EVENT_MASK_STRUCTURE_NOTIFY, (char *)event);
+  }
+
+  xcb_flush(conn);
 }
 
 void handle_button_press(xcb_button_press_event_t *ev) {
@@ -108,15 +137,17 @@ void configure() {
 
 int main() {
   conn = xcb_connect(NULL, NULL);
+  setup = xcb_get_setup(conn);
+  screen = xcb_setup_roots_iterator(setup).data;
+  xcb_flush(conn);
+  root = screen->root;
 
   session = session_start();
   input_config = input_create_config(conn);
 
-  setup = xcb_get_setup(conn);
-  screen = xcb_setup_roots_iterator(setup).data;
-  xcb_flush(conn);
-
-  root = screen->root;
+  Draw *draw = draw_init(conn, screen, &root);
+  gui = gui_initialize(draw);
+  decorator = decorator_initialize(conn, screen, &root, gui);
 
   configure();
 
@@ -210,6 +241,10 @@ int main() {
       printf("[Event] Map request\n");
       xcb_map_request_event_t *map_event = (xcb_map_request_event_t *)ev;
       handle_map_request(map_event->window);
+      break;
+    case 22: // XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY:
+      printf("[Event] Sub structure notify\n");
+      handle_screen_modify();
       break;
     default:
       printf("[Event] Unknown, %d\n", ev->response_type);
