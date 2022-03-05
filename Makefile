@@ -22,7 +22,7 @@ OBJS_WM = $(patsubst $(SRCS_WM)/*.h, $(OBJ)/.o, $(SRCS_WM)) \
 
 INC = $(DEP)
 
-all: $(BIN)/wm 
+all: $(BIN)/hotwm 
 
 install: all
 	mkdir -p $(DESTDIR)$(BINDIR)
@@ -35,7 +35,7 @@ install: all
 $(OBJ)/*.o: $(SRC_WM)/*.c $(SRC_SHARED)/*.c $(DEPS_WM)/*.h $(DEPS_SHARED)/*.h
 	$(CC) $(ALL_CFLAGS) -c $< -o $@
 	
-$(BIN)/wm: $(OBJS_WM)
+$(BIN)/hotwm: $(OBJS_WM)
 	$(CC) $(ALL_LDFLAGS) $(OBJS_WM) $(LDLIBS) -I$(SRC_SHARED) -I$(SRC_WM) -o $(BIN)/hotwm
 
 
