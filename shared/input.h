@@ -9,8 +9,6 @@
 
 typedef union {
   int i;
-  unsigned int ui;
-  float f;
   char *v;
 } Arg;
 
@@ -20,8 +18,6 @@ typedef struct {
   void CALLBACK
   char *arg_v;
   int arg_i;
-  unsigned int arg_ui;
-  float arg_f;
 } Key;
 
 typedef struct {

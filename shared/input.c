@@ -35,8 +35,6 @@ void input_define_key(InputConfig *config, xcb_keysym_t keysym,
   key->func = func;
   key->arg_v = arg->v;
   key->arg_i = arg->i;
-  key->arg_f = arg->f;
-  key->arg_ui = arg->ui;
 
   config->keys[config->key_index++] = key;
 }
@@ -63,7 +61,12 @@ void input_handle_key_event(InputConfig *config, xcb_key_press_event_t *event) {
 
       printf("[KEYBOARD] Found key, %d\n", config->keys[i]->keysym);
 
-      Arg arg = {.v = config->keys[i]->arg_v};
+      Arg *arg;
+      arg->i = config->keys[i]->arg_i;
+
+      if (config->keys[i]->arg_v != NULL) {
+        arg->v = config->keys[i]->arg_v;
+      }
 
       config->keys[i]->func(&arg);
 
