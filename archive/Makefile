@@ -6,23 +6,10 @@ PREFIX = /usr/local
 LDLIBS = -lm
 BINDIR = $(PREFIX)/bin
 MANDIR = $(PREFIX)/share/man
+DEPS = manager.h layout.h debug.h
+OBJS = main.o manager.o debug.o
 
-BIN = bin
-OBJ = obj
-
-SRC_WM = wm
-SRC_SHARED = shared
-
-
-DEPS_WM = $(wildcard $(SRC_WM)/*.h) $(wildcard $(SRC_SHARED)/*.h)
-SRCS_WM = $(wildcard $(SRC_WM)/*.c) $(wildcard $(SRC_SHARED)/*.c)
-
-OBJS_WM = $(patsubst $(SRCS_WM)/*.h, $(OBJ)/.o, $(SRCS_WM)) \
-			$(patsubst $(SRCS_SHARED)/*.h, $(OBJ)/.o, $(SRCS_SHARED))
-
-INC = $(DEP)
-
-all: $(BIN)/wm 
+all: hotwm
 
 install: all
 	mkdir -p $(DESTDIR)$(BINDIR)
@@ -32,12 +19,11 @@ install: all
 	chmod 755 $(DESTDIR)$(BINDIR)/main
 	chmod 644 $(DESTDIR)$(MANDIR)/man1/main.1
 
-$(OBJ)/*.o: $(SRC_WM)/*.c $(SRC_SHARED)/*.c $(DEPS_WM)/*.h $(DEPS_SHARED)/*.h
+%.o: %.c $(DEPS)
 	$(CC) $(ALL_CFLAGS) -c $< -o $@
 	
-$(BIN)/wm: $(OBJS_WM)
-	$(CC) $(ALL_LDFLAGS) $(OBJS_WM) $(LDLIBS) -I$(SRC_SHARED) -I$(SRC_WM) -o $(BIN)/hotwm
-
+hotwm: $(OBJS)
+	$(CC) $(ALL_LDFLAGS) $(OBJS) $(LDLIBS) -o hotwm
 
 clean:
 	rm -f main *.o
