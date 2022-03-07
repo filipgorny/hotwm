@@ -8,6 +8,5 @@ typedef struct {
     int resolution;
 } Grid;
 
-Grid grid_create(int resolution);
-
-GridPoint grid_get_nearest_point(Grid grid, int x, int y);
+Grid *grid_create();
+GridPoint *grid_get_nearest_point(Grid grid, int x, int y);

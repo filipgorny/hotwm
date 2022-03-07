@@ -2,7 +2,7 @@
 #include "grid.h"
 #include "gui.h"
 #include "input.h"
-#include "screen.h"
+#include "log.h"
 #include "session.h"
 #include "spawn.h"
 #include "window.h"
@@ -10,6 +10,9 @@
 #include <xcb/xcb.h>
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xproto.h>
+
+#include "layout_mono.h"
+#include "layout_stack.h"
 
 Session *session;
 InputConfig *input_config;
@@ -20,6 +23,20 @@ xcb_connection_t *conn;
 const xcb_setup_t *setup;
 xcb_drawable_t root;
 xcb_screen_t *screen;
+
+void refresh() {
+  if (0) {
+    printf("[REFRESH] Current layout is '%s'\n",
+           session_current_layout(session)->name);
+
+    session_current_layout(session)->apply(
+        session_current_layout(session), screen,
+        session->current_desktop->current_client,
+        session->current_desktop->current_client);
+  }
+
+  decorator_refresh(decorator, session->current_desktop->clients);
+}
 
 void handle_screen_modify() {
   // TODO - doesn't work
@@ -35,9 +52,10 @@ void handle_screen_modify() {
 void handle_map_request(xcb_window_t window) {
   int values[3];
 
-  values[0] =
-      XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | XCB_EVENT_MASK_STRUCTURE_NOTIFY |
-      XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY | XCB_EVENT_MASK_PROPERTY_CHANGE;
+  values[0] = XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT |
+              XCB_EVENT_MASK_STRUCTURE_NOTIFY |
+              XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY |
+              XCB_EVENT_MASK_PROPERTY_CHANGE | XCB_EVENT_MASK_KEY_PRESS,
   xcb_change_window_attributes_checked(conn, window, XCB_CW_EVENT_MASK, values);
 
   xcb_map_window(conn, window);
@@ -51,18 +69,18 @@ void handle_map_request(xcb_window_t window) {
   session_add_client(session, c);
 
   session->current_desktop->current_client = c;
-  // screen_refresh();
+
+  refresh();
 }
 
 void handle_key_press(xcb_key_press_event_t *event) {
   input_handle_key_event(input_config, event);
 
-  if (session->current_desktop->current_client) {
-    printf("Sending key press to client\n");
-    xcb_send_event(
-        conn, 0,
-        *session->current_desktop->current_client->window->child_window,
-        XCB_EVENT_MASK_STRUCTURE_NOTIFY, (char *)event);
+  if (session->current_desktop->current_client != NULL) {
+    Client *c = session->current_desktop->current_client;
+
+    xcb_send_event(conn, 0, *c->window->subwindow, XCB_EVENT_MASK_KEY_PRESS,
+                   (char *)event);
   }
 
   xcb_flush(conn);
@@ -133,6 +151,8 @@ void handle_mouse_motion(xcb_motion_notify_event_t *event) {
 void configure() {
   Arg arg = {.v = "/bin/st"};
   input_define_key(input_config, KEY_ENTER, MODKEY, spawn, &arg);
+
+  session_add_layout(session, layout_create("mono", layout_mono_apply));
 }
 
 int main() {
@@ -142,12 +162,11 @@ int main() {
   xcb_flush(conn);
   root = screen->root;
 
-  session = session_start();
+  session = session_start(screen);
   input_config = input_create_config(conn);
 
-  Draw *draw = draw_init(conn, screen, &root);
-  gui = gui_initialize(draw);
-  decorator = decorator_initialize(conn, screen, &root, gui);
+  gui = gui_initialize(draw_init(conn, screen, &root));
+  decorator = decorator_initialize(conn, screen);
 
   configure();
 

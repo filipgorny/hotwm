@@ -9,6 +9,7 @@ Draw *draw_init(xcb_connection_t *conn, xcb_screen_t *screen,
   draw->conn = conn;
   draw->screen = screen;
   draw->gc = xcb_generate_id(conn);
+
   xcb_create_gc(conn, draw->gc, *root, XCB_GC_FOREGROUND,
                 (const uint32_t[]){0xff0000});
 

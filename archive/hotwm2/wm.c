@@ -1,4 +1,4 @@
-#include <X11/X.h>
+/ include<X11 / X.h>
 #include <X11/Xutil.h>
 #include <X11/keysym.h>
 #include <cairo/cairo.h>
@@ -16,7 +16,7 @@
 #include "mouse.h"
 #include "wm.h"
 
-const xcb_setup_t *setup;
+    const xcb_setup_t *setup;
 xcb_generic_event_t *ev;
 
 xcb_drawable_t root;

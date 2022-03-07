@@ -1,4 +1,5 @@
 #include "window.h"
+#include "log.h"
 #include <stdlib.h>
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
@@ -8,22 +9,27 @@ Window *window_create(xcb_connection_t *conn, xcb_window_t *window) {
   w->conn = conn;
   w->window = window;
 
-  WindowProperties *properties = malloc(sizeof(WindowProperties));
-  w->properties = properties;
-
   return w;
 }
 
-void window_update(Window *window) {
-  xcb_get_geometry_cookie_t cookie;
-  xcb_get_geometry_reply_t *reply;
+void window_update(Window *window) {}
 
-  cookie = xcb_get_geometry(window->conn, *window->window);
+void window_resize(Window *window, int width, int height) {
+  xcb_window_t w = *window->window;
 
-  reply = xcb_get_geometry_reply(window->conn, cookie, NULL);
+  xcb_configure_window(window->conn, w,
+                       XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
+                       (uint32_t[]){width, height});
 
-  window->properties->x = reply->x;
-  window->properties->y = reply->y;
-  window->properties->width = reply->width;
-  window->properties->height = reply->height;
+  window_update(window);
+}
+
+void window_position(Window *window, int x, int y) {
+  xcb_window_t w = *window->window;
+
+  xcb_configure_window(window->conn, w,
+                       XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y,
+                       (uint32_t[]){x, y});
+
+  window_update(window);
 }
