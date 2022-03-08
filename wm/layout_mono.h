@@ -7,6 +7,9 @@ void layout_mono_apply(Layout *layout, xcb_screen_t *screen, Client *clients, Cl
         return;
     }
 
-    window_resize(current_client->window, screen->width_in_pixels, screen->height_in_pixels);
+    current_client->window->width = screen->width_in_pixels;
+    current_client->window->height = screen->height_in_pixels;
+
+    window_update(current_client->window);
 }
 

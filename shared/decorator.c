@@ -41,7 +41,7 @@ void decorator_decorate_window(Decorator *decorator, Window *window) {
 }
 
 void decorator_update_window(Decorator *decorator, Window *window) {
-  log_info("DECORATOR", "Drawing decoration of parent window");
+  log_info("Decorator", "Drawing decoration of parent window");
 
   xcb_window_t win = *window->window;
 
@@ -49,6 +49,19 @@ void decorator_update_window(Decorator *decorator, Window *window) {
             600 + WINDOW_PADDING * 2 + TITLE_BAR_HEIGHT, 0x00444444);
   draw_text(window->draw, win, 30, 50, "TO JEST PRZYKLADOWY TEKST", 0x00ffff00,
             0x0000ff00, "Roboto");
+
+  int subwindow_x = 1;
+  int subwindow_y = 1 + TITLE_BAR_HEIGHT + 1;
+  int subwindow_width = window->width - 2;
+  int subwindow_height = window->height - 2 - TITLE_BAR_HEIGHT - 1;
+
+  xcb_configure_window(window->conn, *window->subwindow,
+                       XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
+                       (uint32_t[]){subwindow_width, subwindow_height});
+
+  xcb_configure_window(window->conn, *window->subwindow,
+                       XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y,
+                       (uint32_t[]){subwindow_x, subwindow_y});
 }
 
 void decorator_refresh(Decorator *decorator, Client *clients) {

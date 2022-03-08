@@ -2,6 +2,8 @@
 
 #include "client.h"
 
+#include <stdbool.h>
+
 #define layout_callback void (*apply)(Layout *layout, xcb_screen_t *screen, Client *clients, Client *current_client)
 
 typedef struct Layout Layout;

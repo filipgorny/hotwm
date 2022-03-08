@@ -12,24 +12,14 @@ Window *window_create(xcb_connection_t *conn, xcb_window_t *window) {
   return w;
 }
 
-void window_update(Window *window) {}
-
-void window_resize(Window *window, int width, int height) {
+void window_update(Window *window) {
   xcb_window_t w = *window->window;
 
   xcb_configure_window(window->conn, w,
                        XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
-                       (uint32_t[]){width, height});
-
-  window_update(window);
-}
-
-void window_position(Window *window, int x, int y) {
-  xcb_window_t w = *window->window;
+                       (uint32_t[]){window->width, window->height});
 
   xcb_configure_window(window->conn, w,
                        XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y,
-                       (uint32_t[]){x, y});
-
-  window_update(window);
+                       (uint32_t[]){window->x, window->y});
 }

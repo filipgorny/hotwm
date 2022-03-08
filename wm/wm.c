@@ -25,15 +25,13 @@ xcb_drawable_t root;
 xcb_screen_t *screen;
 
 void refresh() {
-  if (0) {
-    printf("[REFRESH] Current layout is '%s'\n",
-           session_current_layout(session)->name);
+  printf("[Refresh] Current layout is '%s'\n",
+         session_current_layout(session)->name);
 
-    session_current_layout(session)->apply(
-        session_current_layout(session), screen,
-        session->current_desktop->current_client,
-        session->current_desktop->current_client);
-  }
+  session_current_layout(session)->apply(
+      session_current_layout(session), screen,
+      session->current_desktop->current_client,
+      session->current_desktop->current_client);
 
   decorator_refresh(decorator, session->current_desktop->clients);
 }
