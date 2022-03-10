@@ -27,3 +27,6 @@ void session_add_client(Session *session, Client *client);
 void session_add_layout(Session *session, Layout *layout);
 Layout *session_current_layout(Session *session);
 Client *session_find_client_by_xcb_window(Session *session, xcb_window_t window);
+
+void session_select_next_client(Session *session);
+void session_select_previous_client(Session *session);

@@ -13,6 +13,7 @@ Window *window_create(xcb_connection_t *conn, xcb_screen_t *screen,
   w->conn = conn;
   w->subwindow = window;
   w->title = "";
+  w->hidden = false;
 
   w->x = screen->width_in_pixels / 2 - screen->width_in_pixels / 4;
   w->y = screen->height_in_pixels / 2 - screen->height_in_pixels / 4,
@@ -45,6 +46,12 @@ void window_update(Window *window) {
   xcb_configure_window(window->conn, w,
                        XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y,
                        (int[]){window->x, window->y});
+
+  if (window->hidden) {
+    xcb_unmap_window(window->conn, w);
+  } else {
+    xcb_map_window(window->conn, w);
+  }
 
   xcb_flush(window->conn);
 }

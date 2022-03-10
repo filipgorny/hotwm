@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdbool.h>
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
 #include "draw.h"
@@ -11,6 +12,7 @@ typedef struct {
     int x, y;
     int width, height;
     char* title;
+    bool hidden;
 } Window;
 
 Window *window_create(xcb_connection_t *conn, xcb_screen_t *screen, xcb_window_t root, xcb_window_t window);

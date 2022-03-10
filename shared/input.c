@@ -1,4 +1,5 @@
 #include "input.h"
+#include "action.h"
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
 #include <X11/Xproto.h>
@@ -33,6 +34,7 @@ void input_define_key(InputConfig *config, xcb_keysym_t keysym,
   key->keysym = keysym;
   key->modifiers = modifiers;
   key->func = func;
+  key->action_name = NULL;
 
   key->arg = malloc(sizeof(Arg));
   key->arg->v = arg->v;
@@ -41,7 +43,9 @@ void input_define_key(InputConfig *config, xcb_keysym_t keysym,
   config->keys[config->key_index++] = key;
 }
 
-void input_handle_key_event(InputConfig *config, xcb_key_press_event_t *event) {
+void input_handle_key_event(InputConfig *config,
+                            ActionsRegistry *actions_registry,
+                            xcb_key_press_event_t *event) {
   xcb_key_symbols_t *keysyms = xcb_key_symbols_alloc(config->conn);
   xcb_keysym_t keysym;
   keysym =
@@ -65,7 +69,11 @@ void input_handle_key_event(InputConfig *config, xcb_key_press_event_t *event) {
 
       printf("V: %s\n", config->keys[i]->arg->v);
 
-      config->keys[i]->func(config->keys[i]->arg);
+      if (config->keys[i]->func) {
+        config->keys[i]->func(config->keys[i]->arg);
+      } else if (config->keys[i]->action_name) {
+        action_execute(actions_registry, config->keys[i]->action_name);
+      }
 
       return;
     }
@@ -73,3 +81,17 @@ void input_handle_key_event(InputConfig *config, xcb_key_press_event_t *event) {
 }
 
 void input_config_free(InputConfig *config) {}
+
+void input_define_key_action(InputConfig *config, xcb_keysym_t keysym,
+                             unsigned int modifiers, char *action_name) {
+
+  Key *key = malloc(sizeof(Key));
+  key->keysym = keysym;
+  key->modifiers = modifiers;
+  key->func = NULL;
+  key->action_name = action_name;
+
+  key->arg = malloc(sizeof(Arg));
+
+  config->keys[config->key_index++] = key;
+}

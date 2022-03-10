@@ -18,7 +18,7 @@ struct Client {
     bool has_float_cords;
     bool minimalized;
     bool maximalized;
-    Client *next;
+    Client *next, *prev;
 };
 
 Client *client_create(Window *window);

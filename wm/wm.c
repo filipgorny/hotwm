@@ -1,3 +1,4 @@
+#include "action.h"
 #include "decorator.h"
 #include "grid.h"
 #include "gui.h"
@@ -13,6 +14,8 @@
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xproto.h>
 
+#include <X11/keysym.h>
+
 #include "layout_mono.h"
 #include "layout_stack.h"
 
@@ -21,11 +24,14 @@ InputConfig *input_config;
 Gui *gui;
 Decorator *decorator;
 Style *style;
+ActionsRegistry *actions_registry;
 
 xcb_connection_t *conn;
 const xcb_setup_t *setup;
 xcb_drawable_t root;
 xcb_screen_t *screen;
+
+#include "__action_methods.h"
 
 void refresh() {
   printf("[Refresh] Current layout is '%s'\n",
@@ -78,7 +84,7 @@ void handle_map_request(xcb_window_t window) {
 }
 
 void handle_key_press(xcb_key_press_event_t *event) {
-  input_handle_key_event(input_config, event);
+  input_handle_key_event(input_config, actions_registry, event);
 
   if (session->current_desktop->current_client != NULL) {
     Client *c = session->current_desktop->current_client;
@@ -163,9 +169,6 @@ void handle_property_change(xcb_property_notify_event_t *event) {
 }
 
 void configure() {
-  Arg arg = {.v = "/bin/st"};
-  input_define_key(input_config, KEY_ENTER, MODKEY, spawn, &arg);
-
   session_add_layout(session, layout_create("mono", layout_mono_apply));
 
   style->gap = 8;
@@ -178,6 +181,15 @@ void configure() {
   style->title_bar_margin = 1;
   style->title_bar_text_padding_bottom = 6;
   style->title_bar_text_padding_left = 2;
+
+  action_define(actions_registry, "next_client", __next_client);
+  action_define(actions_registry, "prev_client", __prev_client);
+
+  Arg arg = {.v = "/bin/st"};
+  input_define_key(input_config, KEY_ENTER, MODKEY, spawn, &arg);
+
+  input_define_key_action(input_config, XK_j, MODKEY, "next_client");
+  input_define_key_action(input_config, XK_k, MODKEY, "prev_client");
 }
 
 int main() {
@@ -189,6 +201,7 @@ int main() {
 
   session = session_start(screen);
   input_config = input_create_config(conn);
+  actions_registry = action_create_registry();
 
   gui = gui_initialize(draw_init(conn, screen, &root));
   decorator = decorator_initialize(conn, screen);

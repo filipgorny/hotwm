@@ -23,6 +23,7 @@ void session_add_client(Session *session, Client *client) {
   if (c == NULL) {
     session->current_desktop->clients = client;
     session->current_desktop->clients->next = NULL;
+    session->current_desktop->clients->prev = NULL;
 
     return;
   }
@@ -31,6 +32,8 @@ void session_add_client(Session *session, Client *client) {
 
     if (c->next == NULL) {
       c->next = client;
+      client->prev = c;
+
       break;
     }
 
@@ -63,4 +66,41 @@ Client *session_find_client_by_xcb_window(Session *session,
   }
 
   return NULL;
+}
+
+void session_select_next_client(Session *session) {
+  if (!session->current_desktop->current_client) {
+    if (session->current_desktop->clients) {
+      session->current_desktop->current_client =
+          session->current_desktop->clients;
+    }
+
+    return;
+  }
+
+  if (session->current_desktop->current_client->next) {
+    session->current_desktop->current_client =
+        session->current_desktop->current_client->next;
+  } else {
+    // select first client
+
+    session->current_desktop->current_client =
+        session->current_desktop->clients;
+  }
+}
+
+void session_select_previous_client(Session *session) {
+  if (!session->current_desktop->current_client) {
+    if (session->current_desktop->clients) {
+      session->current_desktop->current_client =
+          session->current_desktop->clients;
+    }
+
+    return;
+  }
+
+  if (session->current_desktop->current_client->prev) {
+    session->current_desktop->current_client =
+        session->current_desktop->current_client->prev;
+  }
 }
