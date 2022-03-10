@@ -13,6 +13,7 @@
 typedef struct Client Client;
 struct Client {
     Window *window;
+    char* name;
     int float_x, float_y, float_width, float_height;
     bool has_float_cords;
     bool minimalized;

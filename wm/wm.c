@@ -5,8 +5,10 @@
 #include "log.h"
 #include "session.h"
 #include "spawn.h"
+#include "style.h"
 #include "window.h"
 #include <stdio.h>
+#include <string.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xproto.h>
@@ -18,6 +20,7 @@ Session *session;
 InputConfig *input_config;
 Gui *gui;
 Decorator *decorator;
+Style *style;
 
 xcb_connection_t *conn;
 const xcb_setup_t *setup;
@@ -31,9 +34,9 @@ void refresh() {
   session_current_layout(session)->apply(
       session_current_layout(session), screen,
       session->current_desktop->current_client,
-      session->current_desktop->current_client);
+      session->current_desktop->current_client, style);
 
-  decorator_refresh(decorator, session->current_desktop->clients);
+  decorator_refresh(decorator, session->current_desktop->clients, style);
 }
 
 void handle_screen_modify() {
@@ -41,7 +44,7 @@ void handle_screen_modify() {
   Client *c = session->current_desktop->clients;
 
   while (c) {
-    decorator_update_window(decorator, c->window);
+    decorator_decorate_window(decorator, c->window, style);
 
     c = c->next;
   }
@@ -58,15 +61,18 @@ void handle_map_request(xcb_window_t window) {
 
   xcb_map_window(conn, window);
 
-  Window *w = window_create(conn, &window);
-
-  decorator_decorate_window(decorator, w);
+  Window *w = window_create(conn, screen, root, window);
 
   Client *c = client_create(w);
 
   session_add_client(session, c);
 
   session->current_desktop->current_client = c;
+
+  c->name = w->title = window_find_name(w);
+  printf("WINDOW TITLE : %s\n", w->title);
+  decorator_decoration_init(decorator, w);
+  decorator_decorate_window(decorator, w, style);
 
   refresh();
 }
@@ -77,7 +83,7 @@ void handle_key_press(xcb_key_press_event_t *event) {
   if (session->current_desktop->current_client != NULL) {
     Client *c = session->current_desktop->current_client;
 
-    xcb_send_event(conn, 0, *c->window->subwindow, XCB_EVENT_MASK_KEY_PRESS,
+    xcb_send_event(conn, 0, c->window->subwindow, XCB_EVENT_MASK_KEY_PRESS,
                    (char *)event);
   }
 
@@ -146,11 +152,32 @@ void handle_mouse_motion(xcb_motion_notify_event_t *event) {
     }*/
 }
 
+void handle_property_change(xcb_property_notify_event_t *event) {
+  if (event->state == XCB_PROPERTY_NEW_VALUE) {
+    if (event->atom == XCB_ATOM_WM_NAME) {
+      Client *c = session_find_client_by_xcb_window(session, event->window);
+
+      c->name = c->window->title = window_find_name(c->window);
+    }
+  }
+}
+
 void configure() {
   Arg arg = {.v = "/bin/st"};
   input_define_key(input_config, KEY_ENTER, MODKEY, spawn, &arg);
 
   session_add_layout(session, layout_create("mono", layout_mono_apply));
+
+  style->gap = 8;
+  style->margin = 32;
+  style->title_bar_color = 0x00111111f;
+  style->title_bar_text_color = 0x00fffffff;
+  style->window_border_color = 0x00333333f;
+  style->title_bar_height = 32;
+  style->window_padding = 1;
+  style->title_bar_margin = 1;
+  style->title_bar_text_padding_bottom = 6;
+  style->title_bar_text_padding_left = 2;
 }
 
 int main() {
@@ -165,6 +192,8 @@ int main() {
 
   gui = gui_initialize(draw_init(conn, screen, &root));
   decorator = decorator_initialize(conn, screen);
+
+  style = style_create();
 
   configure();
 
@@ -200,34 +229,8 @@ int main() {
       printf("[Event] Property changed\n");
       xcb_property_notify_event_t *property_event =
           (xcb_property_notify_event_t *)ev;
-      /*
-            if (property_event->state == XCB_PROPERTY_NEW_VALUE) {
-              if (property_event->atom == XCB_ATOM_WM_NAME) {
-                xcb_get_property_cookie_t cookie = xcb_get_property(
-                    conn, 0, property_event->window, XCB_ATOM_WM_NAME,
-                    XCB_ATOM_STRING, 0, UINT32_MAX);
 
-                xcb_get_property_reply_t *reply =
-                    xcb_get_property_reply(conn, cookie, NULL);
-
-                if (reply) {
-                  char *name = xcb_get_property_value(reply);
-                  if (name) {
-                    Client *c =
-         session->current_monitor->current_desktop->clients;
-
-                    while (c) {
-                      if (c->parent == property_event->window) {
-                        c->name = name;
-                        break;
-                      }
-
-                      c = c->next;
-                    }
-                  }
-                }
-              }
-            }*/
+      handle_property_change(property_event);
       break;
     case 5: // XCB_EVENT_MASK_BUTTON_RELEASE: // Button release event
       printf("[Event] Button release\n");

@@ -35,7 +35,15 @@ void draw_text(Draw *draw, xcb_window_t window, int x, int y, const char *text,
   xcb_change_gc(draw->conn, draw->gc, XCB_GC_FOREGROUND | XCB_GC_BACKGROUND,
                 values);
 
-  uint32_t values_fonts[] = {font};
+  xcb_font_t font_gc = xcb_generate_id(draw->conn);
+  xcb_open_font(draw->conn, font_gc, strlen(font), font);
+
+  uint32_t *values_fonts[] = {font_gc};
+
+  xcb_change_gc(draw->conn, draw->gc, XCB_GC_FONT, values_fonts);
+
+  xcb_close_font(draw->conn, font_gc);
+
   xcb_image_text_8(draw->conn, strlen(text), window, draw->gc, x, y, text);
   xcb_flush(draw->conn);
 }

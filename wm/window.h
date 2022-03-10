@@ -6,11 +6,13 @@
 
 typedef struct {
     xcb_connection_t *conn;
-    xcb_window_t *window, *subwindow;
+    xcb_window_t window, subwindow;
     Draw *draw;
     int x, y;
     int width, height;
+    char* title;
 } Window;
 
-Window *window_create(xcb_connection_t *conn, xcb_window_t *window);
+Window *window_create(xcb_connection_t *conn, xcb_screen_t *screen, xcb_window_t root, xcb_window_t window);
 void window_update(Window *window);
+char* window_find_name(Window *window);

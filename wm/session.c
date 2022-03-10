@@ -49,3 +49,18 @@ void session_add_layout(Session *session, Layout *layout) {
 Layout *session_current_layout(Session *session) {
   return &session->layouts[session->current_layout_index];
 }
+
+Client *session_find_client_by_xcb_window(Session *session,
+                                          xcb_window_t window) {
+  Client *c = session->current_desktop->clients;
+
+  while (c) {
+    if (c->window->window == window || c->window->subwindow == window) {
+      return c;
+    }
+
+    c = c->next;
+  }
+
+  return NULL;
+}

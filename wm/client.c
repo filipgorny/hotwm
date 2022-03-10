@@ -8,6 +8,7 @@ Client *client_create(Window *window) {
   Client *client = malloc(sizeof(Client));
   client->window = window;
   client->has_float_cords = false;
+  client->name = "";
 
   return client;
 }

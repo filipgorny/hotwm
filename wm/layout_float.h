@@ -1,7 +1,8 @@
 #include "layout.h"
+#include "style.h"
 #include "window.h"
 
-void layout_stack_float(Layout *layout, xcb_screen_t *screen, Client *clients, Client *current_client) {
+void layout_stack_float(Layout *layout, xcb_screen_t *screen, Client *clients, Client *current_client, Style *style) {
     Client *c = clients;
 
     while (c) {

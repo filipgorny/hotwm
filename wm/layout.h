@@ -1,10 +1,11 @@
 #pragma once
 
 #include "client.h"
+#include "style.h"
 
 #include <stdbool.h>
 
-#define layout_callback void (*apply)(Layout *layout, xcb_screen_t *screen, Client *clients, Client *current_client)
+#define layout_callback void (*apply)(Layout *layout, xcb_screen_t *screen, Client *clients, Client *current_client, Style *style)
 
 typedef struct Layout Layout;
 struct Layout {
