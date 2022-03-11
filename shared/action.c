@@ -1,10 +1,12 @@
 #include "action.h"
 #include "log.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 ActionsRegistry *action_create_registry() {
   ActionsRegistry *a = malloc(sizeof(ActionsRegistry));
+  a->actions_length = 0;
 
   return a;
 }
@@ -22,40 +24,25 @@ void action_define(ActionsRegistry *registry, char *name, void (*func)()) {
   a->name = name;
   a->method = func;
 
-  Action *action = registry->actions;
+  registry->actions[registry->actions_length] = a;
+  registry->actions_length++;
 
-  if (!action) {
-    registry->actions = a;
-
-    return;
-  }
-
-  while (action) {
-    if (!action->next) {
-      action->next = a;
-
-      return;
-    }
-
-    action = action->next;
-  }
+  printf("Dodano akcje, ilosc: %d\n", registry->actions_length);
 }
 
 void action_execute(ActionsRegistry *registry, char *name) {
-  Action *a = registry->actions;
+  int i;
 
-  while (a) {
-    printf("Testing action %s\n", a->name);
-    if (strcmp(a->name, name) == 0) {
-      log_info("action", "Found and executing action");
-      log_info("action", a->name);
+  printf("Count actions: %d\n", registry->actions_length);
 
-      a->method(a->args);
+  for (i = 0; i < registry->actions_length; i++) {
+    printf("Testing %s\n", registry->actions[i]->name);
+    if (registry->actions[i]->name == name) {
+      log_info("action", "Firing action.");
+      registry->actions[i]->method(registry->actions[i]->args);
 
       return;
     }
-
-    a = a->next;
   }
 
   log_info("action", "No action definition found");

@@ -12,3 +12,14 @@ void __prev_client(Arg *arg) {
 
     refresh();
 }
+
+void __layout_mono(Arg *arg) {
+    return;
+    session_select_layout(session, "mono");
+    refresh();
+}
+
+void __layout_stack(Arg *arg) {
+    session_select_layout(session, "stack");
+    refresh();
+}

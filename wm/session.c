@@ -1,5 +1,6 @@
 #include "session.h"
 #include <stdlib.h>
+#include <string.h>
 
 Session *session_start(xcb_screen_t *screen) {
   Session *session = malloc(sizeof(Session));
@@ -42,7 +43,7 @@ void session_add_client(Session *session, Client *client) {
 }
 
 void session_add_layout(Session *session, Layout *layout) {
-  session->layouts[session->layout_count] = *layout;
+  session->layouts[session->layout_count] = layout;
 
   session->current_layout_index = session->layout_count;
 
@@ -50,7 +51,7 @@ void session_add_layout(Session *session, Layout *layout) {
 }
 
 Layout *session_current_layout(Session *session) {
-  return &session->layouts[session->current_layout_index];
+  return session->layouts[session->current_layout_index];
 }
 
 Client *session_find_client_by_xcb_window(Session *session,
@@ -102,5 +103,43 @@ void session_select_previous_client(Session *session) {
   if (session->current_desktop->current_client->prev) {
     session->current_desktop->current_client =
         session->current_desktop->current_client->prev;
+  }
+}
+
+Layout *session_get_layout(Session *session, char *name) {
+  int i;
+
+  for (i = 0; i < session->layout_count; i++) {
+    if (strcmp(session->layouts[i]->name, name) == 0) {
+      return session->layouts[i];
+    }
+  }
+
+  return NULL;
+}
+
+int session_desktop_client_count(Desktop *desktop) {
+  Client *c = desktop->clients;
+
+  int count = 0;
+
+  while (c) {
+    count++;
+
+    c = c->next;
+  }
+
+  return count;
+}
+
+void session_select_layout(Session *session, char *name) {
+  int i;
+
+  for (i = 0; i < session->layout_count; i++) {
+    if (strcmp(session->layouts[i]->name, name) == 0) {
+      session->current_layout_index = i;
+
+      return;
+    }
   }
 }

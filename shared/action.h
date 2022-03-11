@@ -8,13 +8,12 @@ typedef struct Action Action;
 struct Action {
     char* name;
     ACTION_METHOD;
-    Action *next;
     Arg *args;
 };
 
 typedef struct {
     int actions_length;
-    Action* actions;
+    Action* actions[];
 } ActionsRegistry;
 
 

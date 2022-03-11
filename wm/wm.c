@@ -170,6 +170,9 @@ void handle_property_change(xcb_property_notify_event_t *event) {
 
 void configure() {
   session_add_layout(session, layout_create("mono", layout_mono_apply));
+  session_add_layout(session, layout_create("stack", layout_stack_apply));
+
+  session_select_layout(session, "mono");
 
   style->gap = 8;
   style->margin = 32;
@@ -182,14 +185,20 @@ void configure() {
   style->title_bar_text_padding_bottom = 6;
   style->title_bar_text_padding_left = 2;
 
+  action_define(actions_registry, "next_client2", __next_client);
+  action_define(actions_registry, "prev_client2", __prev_client);
   action_define(actions_registry, "next_client", __next_client);
   action_define(actions_registry, "prev_client", __prev_client);
+  // action_define(actions_registry, "layout_mono", __layout_mono);
+  // action_define(actions_registry, "layout_stack", __layout_stack);
 
   Arg arg = {.v = "/bin/st"};
   input_define_key(input_config, KEY_ENTER, MODKEY, spawn, &arg);
 
   input_define_key_action(input_config, XK_j, MODKEY, "next_client");
   input_define_key_action(input_config, XK_k, MODKEY, "prev_client");
+  input_define_key_action(input_config, XK_m, MODKEY, "layout_mono");
+  input_define_key_action(input_config, XK_s, MODKEY, "layout_stack");
 }
 
 int main() {
