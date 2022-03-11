@@ -1,5 +1,6 @@
 #include "scripting.h"
 #include "log.h"
+#include "session.h"
 
 #include <X11/keysym.h>
 #include <stdlib.h>
@@ -7,6 +8,7 @@
 #include <lauxlib.h>
 #include <lua.h>
 #include <lualib.h>
+#include <xcb/xproto.h>
 
 KeySymbol keysymbols[KEYSYMBOLS_LENGTH] = {{"a", XK_a},
                                            {"b", XK_b},
@@ -92,6 +94,7 @@ KeySymbol keysymbols[KEYSYMBOLS_LENGTH] = {{"a", XK_a},
 
 ScriptingEngine *current_scripting_engine;
 lua_State *L;
+Session *current_session;
 
 #include "scripting_lib.h"
 
@@ -123,11 +126,14 @@ ScriptingEngine *scripting_create_engine() {
   return engine;
 }
 
-void scripting_run(ScriptingEngine *engine, char *filename) {
+void scripting_run(ScriptingEngine *engine, char *filename, Session *session) {
   L = luaL_newstate();
   luaL_openlibs(L);
 
-  const struct luaL_Reg wmlib[] = {{"map_key", _wm_map_key}, {NULL, NULL}};
+  const struct luaL_Reg wmlib[] = {{"map_key", _wm_map_key},
+                                   {"next_client", _wm_next_client},
+                                   {"prev_client", _wm_prev_client},
+                                   {NULL, NULL}};
 
   luaL_newlib(L, wmlib);
   lua_setglobal(L, "wm");
@@ -137,6 +143,7 @@ void scripting_run(ScriptingEngine *engine, char *filename) {
   if (code != NULL) {
     log_info("Scripting", "Running file");
 
+    current_session = session;
     current_scripting_engine = engine;
 
     if (luaL_loadstring(L, code) == LUA_OK) {
@@ -155,23 +162,26 @@ void scripting_run(ScriptingEngine *engine, char *filename) {
 }
 
 void scripting_register_keybind(ScriptingEngine *engine, KeySymbol key,
-                                int function) {
+                                xcb_mod_mask_t modkey, int function) {
   printf("Registering keybind\n");
 
   Keybind *binding = malloc(sizeof(Keybind));
   binding->key = key;
   binding->function = function;
-  printf("Keybind keysym %d\n", binding->key.keysym);
-  Keybind *k = engine->keybindings;
+  binding->next = NULL;
+  binding->mod = modkey;
 
-  if (!k) {
+  Keybind *k = engine->keybindings;
+  printf("K: %d\n", k);
+
+  if (k == NULL) {
     engine->keybindings = binding;
 
     return;
   }
-
+  printf("loop\n");
   while (k) {
-    if (k->next == NULL || k->next == k) {
+    if (k->next == NULL) {
       k->next = binding;
 
       return;
@@ -179,15 +189,21 @@ void scripting_register_keybind(ScriptingEngine *engine, KeySymbol key,
 
     k = k->next;
   }
+
+  printf("After loop\n");
 }
 
 void scripting_handle_keypress(ScriptingEngine *engine, xcb_connection_t *conn,
                                xcb_key_press_event_t *event) {
+
+  printf("Handling key press, key: %d, state: %d\n", event->detail,
+         event->state);
+
   xcb_key_symbols_t *keysyms = xcb_key_symbols_alloc(conn);
   xcb_keysym_t keysym;
   keysym =
       (!(keysyms) ? 0 : xcb_key_symbols_get_keysym(keysyms, event->detail, 0));
-  printf("Keypress: %d\n", keysym);
+
   if (keysym == NULL) {
     printf("[KEYBOARD] Unknown keysym\n");
 
@@ -195,28 +211,25 @@ void scripting_handle_keypress(ScriptingEngine *engine, xcb_connection_t *conn,
   }
 
   Keybind *k = engine->keybindings;
-  printf("Keybinds: %d\n", k->key.keysym);
+
   while (k) {
-    if (k->key.keysym == keysym) {
+    printf("Checking state %d\n", k->mod);
+    if (k->key.keysym == keysym && event->state == k->mod) {
       printf("[KEYBOARD] Found keybind\n");
-      printf("function %d\n", k->function);
 
       lua_rawgeti(L, LUA_REGISTRYINDEX, k->function);
 
       const int pcall = lua_pcall(L, 0, 0, 0);
-      printf("call finished\n");
+
       if (pcall == LUA_OK) {
         lua_pop(L, lua_gettop(L));
-        printf("call ok\n");
       } else if (pcall == LUA_ERRRUN) {
-        printf("call error\n");
         log_error(lua_tostring(L, -1));
 
         luaL_traceback(L, L, NULL, 1);
         log_error(lua_tostring(L, -1));
       }
-      printf("Pcall returned: %d\n", pcall);
-      return;
+
       return;
     }
 

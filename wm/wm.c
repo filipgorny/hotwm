@@ -4,11 +4,11 @@
 #include "gui.h"
 #include "input.h"
 #include "log.h"
+#include "scripting.h"
 #include "session.h"
 #include "spawn.h"
 #include "style.h"
 #include "window.h"
-#include "scripting.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -88,7 +88,7 @@ void handle_map_request(xcb_window_t window) {
 
 void handle_key_press(xcb_key_press_event_t *event) {
   input_handle_key_event(input_config, actions_registry, event);
-	scripting_handle_keypress(scripting_engine, conn, event);
+  scripting_handle_keypress(scripting_engine, conn, event);
 
   if (session->current_desktop->current_client != NULL) {
     Client *c = session->current_desktop->current_client;
@@ -191,9 +191,11 @@ void configure() {
   Arg arg = {.v = "/bin/st"};
   input_define_key(input_config, KEY_ENTER, MODKEY, spawn, &arg);
 
-	scripting_run(scripting_engine, "/home/filip/Projects/filipgorny/hotwm/cfg/wm/init.lua");
+  scripting_run(scripting_engine,
+                "/home/filip/Projects/filipgorny/hotwm/cfg/wm/init.lua",
+                session);
 
-	log_info("Config", "Configuration loaded");
+  log_info("Config", "Configuration loaded");
 }
 
 int main() {
@@ -212,7 +214,7 @@ int main() {
 
   style = style_create();
 
-	scripting_engine = scripting_create_engine();
+  scripting_engine = scripting_create_engine();
 
   configure();
 
@@ -266,7 +268,7 @@ int main() {
       handle_button_press(button_press_event);
       break;
     case 6: // MOUSE MOTION
-      //printf("[Event] Mouse motion\n");
+      // printf("[Event] Mouse motion\n");
       xcb_motion_notify_event_t *motion_event = (xcb_motion_notify_event_t *)ev;
 
       handle_mouse_motion(motion_event);
