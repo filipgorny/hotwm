@@ -8,6 +8,8 @@
 #include "spawn.h"
 #include "style.h"
 #include "window.h"
+#include "scripting.h"
+
 #include <stdio.h>
 #include <string.h>
 #include <xcb/xcb.h>
@@ -25,6 +27,7 @@ Gui *gui;
 Decorator *decorator;
 Style *style;
 ActionsRegistry *actions_registry;
+ScriptingEngine *scripting_engine;
 
 xcb_connection_t *conn;
 const xcb_setup_t *setup;
@@ -85,6 +88,7 @@ void handle_map_request(xcb_window_t window) {
 
 void handle_key_press(xcb_key_press_event_t *event) {
   input_handle_key_event(input_config, actions_registry, event);
+	scripting_handle_keypress(scripting_engine, conn, event);
 
   if (session->current_desktop->current_client != NULL) {
     Client *c = session->current_desktop->current_client;
@@ -184,21 +188,12 @@ void configure() {
   style->title_bar_margin = 1;
   style->title_bar_text_padding_bottom = 6;
   style->title_bar_text_padding_left = 2;
-
-  action_define(actions_registry, "next_client2", __next_client);
-  action_define(actions_registry, "prev_client2", __prev_client);
-  action_define(actions_registry, "next_client", __next_client);
-  action_define(actions_registry, "prev_client", __prev_client);
-  // action_define(actions_registry, "layout_mono", __layout_mono);
-  // action_define(actions_registry, "layout_stack", __layout_stack);
-
   Arg arg = {.v = "/bin/st"};
   input_define_key(input_config, KEY_ENTER, MODKEY, spawn, &arg);
 
-  input_define_key_action(input_config, XK_j, MODKEY, "next_client");
-  input_define_key_action(input_config, XK_k, MODKEY, "prev_client");
-  input_define_key_action(input_config, XK_m, MODKEY, "layout_mono");
-  input_define_key_action(input_config, XK_s, MODKEY, "layout_stack");
+	scripting_run(scripting_engine, "/home/filip/Projects/filipgorny/hotwm/cfg/wm/init.lua");
+
+	log_info("Config", "Configuration loaded");
 }
 
 int main() {
@@ -216,6 +211,8 @@ int main() {
   decorator = decorator_initialize(conn, screen);
 
   style = style_create();
+
+	scripting_engine = scripting_create_engine();
 
   configure();
 
@@ -269,7 +266,7 @@ int main() {
       handle_button_press(button_press_event);
       break;
     case 6: // MOUSE MOTION
-      printf("[Event] Mouse motion\n");
+      //printf("[Event] Mouse motion\n");
       xcb_motion_notify_event_t *motion_event = (xcb_motion_notify_event_t *)ev;
 
       handle_mouse_motion(motion_event);

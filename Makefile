@@ -1,6 +1,6 @@
 .POSIX:
 ALL_WARNING = -Wall -Wextra -pedantic
-ALL_LDFLAGS = -lxcb -lxcb-keysyms $(LDFLAGS)
+ALL_LDFLAGS = -lxcb -lxcb-keysyms -llua $(LDFLAGS)
 ALL_CFLAGS = $(CPPFLAGS) $(CFLAGS) -std=c99 $(ALL_WARNING)
 PREFIX = /usr/local
 LDLIBS = -lm
