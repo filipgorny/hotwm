@@ -2,6 +2,8 @@
 #include "window.h"
 
 void layout_stack_apply(Layout *layout, xcb_screen_t *screen, Client *clients, Client *current_client, Style *style) {
+    printf("Applying stack layout\n");
+
   Client *c = clients;
   int total_clients = 0;
 
@@ -9,6 +11,10 @@ void layout_stack_apply(Layout *layout, xcb_screen_t *screen, Client *clients, C
         total_clients++;
 
         c = c->next;
+    }
+
+    if (total_clients == 0) {
+        return;
     }
 
     int stack_window_height = (screen->height_in_pixels - style->margin * 2) / total_clients - style->gap;

@@ -1,5 +1,3 @@
 #pragma once
 
-#include "input.h"
-
-void spawn(Arg *arg);
+void spawn(char* process);

@@ -1,3 +1,5 @@
+#include "session.h"
+#include <lauxlib.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
@@ -12,30 +14,21 @@ int _wm_map_key(lua_State *L) {
 	int function = luaL_ref(L, LUA_REGISTRYINDEX);
 	char* key = luaL_checkstring(L, 1);
     xcb_mod_mask_t modkey;
-    char* t;
-    //char* key_splitted = strtok(key, "-");
-
     char* key_char = malloc(2);
 
-    int i = 0;
+    int i;
     bool enable_character_lookup = false;
     bool key_char_defined = false;
 
     for (i=0;i<strlen(key);i++) {
-        printf("KUR: %c\n", key[i]);
-
         if (enable_character_lookup) {
             key_char[0] = key[i];
             key_char[1] = '\0';
-       printf("Defined keychar: %s\n", key_char); 
-
-       key_char_defined = true;
+            key_char_defined = true;
         }
 
         if (key[i] == 'S') {
             modkey = XCB_MOD_MASK_1;
-
-            printf("Defined modmask: %d\n", modkey);
         }
 
         if (key[i] == '-') {
@@ -44,11 +37,7 @@ int _wm_map_key(lua_State *L) {
     }
 
     if (key_char_defined) {
-        printf("keychar: %s\n", key_char);
     	KeySymbol keysymbol = scripting_get_keysymbol(key_char);
-
-        printf("Keysymbol: %d\n", keysymbol);
-
 	    scripting_register_keybind(current_scripting_engine, keysymbol, modkey, function);
     }
 
@@ -106,9 +95,28 @@ void _wm_prev_client(lua_State *L) {
 
                 cc = cc->next;
             }
+
             return;
         }
 
         c = c->prev;
     }
+}
+
+void _wm_set_layout(lua_State *L) {
+    char* layout_name = luaL_checkstring(L, 1);
+
+    session_select_layout(current_session, layout_name);
+
+    refresh();
+}
+
+void _wm_spawn(lua_State *L) {
+    char* process = luaL_checkstring(L, 1);
+    printf("Spawning: %s\n", process);
+    spawn(process);
+}
+
+void _wm_style_set(lua_State *L) {
+    
 }

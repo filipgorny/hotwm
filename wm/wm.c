@@ -2,7 +2,6 @@
 #include "decorator.h"
 #include "grid.h"
 #include "gui.h"
-#include "input.h"
 #include "log.h"
 #include "scripting.h"
 #include "session.h"
@@ -22,7 +21,6 @@
 #include "layout_stack.h"
 
 Session *session;
-InputConfig *input_config;
 Gui *gui;
 Decorator *decorator;
 Style *style;
@@ -87,7 +85,6 @@ void handle_map_request(xcb_window_t window) {
 }
 
 void handle_key_press(xcb_key_press_event_t *event) {
-  input_handle_key_event(input_config, actions_registry, event);
   scripting_handle_keypress(scripting_engine, conn, event);
 
   if (session->current_desktop->current_client != NULL) {
@@ -189,8 +186,6 @@ void configure() {
   style->title_bar_text_padding_bottom = 6;
   style->title_bar_text_padding_left = 2;
   Arg arg = {.v = "/bin/st"};
-  input_define_key(input_config, KEY_ENTER, MODKEY, spawn, &arg);
-
   scripting_run(scripting_engine,
                 "/home/filip/Projects/filipgorny/hotwm/cfg/wm/init.lua",
                 session);
@@ -206,7 +201,6 @@ int main() {
   root = screen->root;
 
   session = session_start(screen);
-  input_config = input_create_config(conn);
   actions_registry = action_create_registry();
 
   gui = gui_initialize(draw_init(conn, screen, &root));
@@ -293,8 +287,6 @@ int main() {
       break;
     }
   }
-
-  input_config_free(input_config);
 
   return 0;
 }

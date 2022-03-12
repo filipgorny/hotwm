@@ -1,8 +1,7 @@
-function hello()
-		print('Hello World!')
-end
+wm.map_key("S-j", wm.next_client);
+wm.map_key("S-k", wm.prev_client);
+wm.map_key("S-s", function () wm.set_layout("stack") end);
+wm.map_key("S-m", function () wm.set_layout("mono") end);
 
-wm.map_key("c", hello);
+wm.spawn("/bin/st")
 
-wm.map_key("S-d", wm.next_client);
-wm.map_key("S-s", wm.prev_client);

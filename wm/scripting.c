@@ -133,6 +133,8 @@ void scripting_run(ScriptingEngine *engine, char *filename, Session *session) {
   const struct luaL_Reg wmlib[] = {{"map_key", _wm_map_key},
                                    {"next_client", _wm_next_client},
                                    {"prev_client", _wm_prev_client},
+                                   {"set_layout", _wm_set_layout},
+                                   {"spawn", _wm_spawn},
                                    {NULL, NULL}};
 
   luaL_newlib(L, wmlib);
