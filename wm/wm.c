@@ -3,6 +3,7 @@
 #include "grid.h"
 #include "gui.h"
 #include "log.h"
+#include "pointer.h"
 #include "scripting.h"
 #include "session.h"
 #include "spawn.h"
@@ -26,6 +27,7 @@ Decorator *decorator;
 Style *style;
 ActionsRegistry *actions_registry;
 ScriptingEngine *scripting_engine;
+Pointer *pointer;
 
 xcb_connection_t *conn;
 const xcb_setup_t *setup;
@@ -98,6 +100,10 @@ void handle_key_press(xcb_key_press_event_t *event) {
 }
 
 void handle_button_press(xcb_button_press_event_t *ev) {
+  pointer_update_action(
+      pointer, ev->detail == XCB_BUTTON_INDEX_1,
+      ev->detail == XCB_BUTTON_INDEX_2, ev->detail == XCB_BUTTON_INDEX_3,
+      ev->state, session_find_client_by_xcb_window(session, ev->event)->window);
   /*  if (ev->detail == XCB_BUTTON_INDEX_1) {
       mouse_update_state(CLEANMASK(ev->state) == MODKEY
                              ? MOUSE_STATE_BUTTON1_DOWN_META
@@ -124,22 +130,29 @@ void handle_button_press(xcb_button_press_event_t *ev) {
 }
 
 void handle_button_release(xcb_button_release_event_t *ev) {
+  pointer_update_action(
+      pointer, ev->detail == XCB_BUTTON_INDEX_1,
+      ev->detail == XCB_BUTTON_INDEX_2, ev->detail == XCB_BUTTON_INDEX_3,
+      ev->state, session_find_client_by_xcb_window(session, ev->event)->window);
+
   /*  Client *c = session->current_monitor->current_desktop->selected_client;
 
-    if (c) {
-      if (mouse_get_state() == MOUSE_STATE_BUTTON1_DOWN_META) {
-        if (c->is_floating) {
-          c->x = c->x - c->display_offset_x;
-          c->y = c->y - c->display_offset_y;
-        }
-      }
-    }
+     if (c) {
+       if (mouse_get_state() == MOUSE_STATE_BUTTON1_DOWN_META) {
+         if (c->is_floating) {
+           c->x = c->x - c->display_offset_x;
+           c->y = c->y - c->display_offset_y;
+         }
+       }
+     }
 
-    mouse_update_state(MOUSE_STATE_FREE);
-  */
+     mouse_update_state(MOUSE_STATE_FREE);
+   */
 }
 
 void handle_mouse_motion(xcb_motion_notify_event_t *event) {
+  pointer_update_cords(pointer, event->event_x, event->event_y);
+
   /*  mouse_update_cords(event->root_x, event->root_y);
 
     Client *c = session->current_monitor->current_desktop->selected_client;
