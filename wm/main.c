@@ -1,7 +1,8 @@
-#include "action.h"
+#include "controller.h"
 #include "decorator.h"
 #include "grid.h"
 #include "gui.h"
+#include "keymap.h"
 #include "log.h"
 #include "pointer.h"
 #include "scripting.h"
@@ -25,16 +26,15 @@ Session *session;
 Gui *gui;
 Decorator *decorator;
 Style *style;
-ActionsRegistry *actions_registry;
-ScriptingEngine *scripting_engine;
+ScriptingContext *scripting_context;
 Pointer *pointer;
+Keymap *keymap;
+Controller *controller;
 
 xcb_connection_t *conn;
 const xcb_setup_t *setup;
 xcb_drawable_t root;
 xcb_screen_t *screen;
-
-#include "__action_methods.h"
 
 void refresh() {
   printf("[Refresh] Current layout is '%s'\n",
@@ -87,24 +87,38 @@ void handle_map_request(xcb_window_t window) {
 }
 
 void handle_key_press(xcb_key_press_event_t *event) {
-  scripting_handle_keypress(scripting_engine, conn, event);
+  Keybind *binding = keymap_get_keybind(keymap, event->detail, event->state);
 
-  if (session->current_desktop->current_client != NULL) {
-    Client *c = session->current_desktop->current_client;
-
-    xcb_send_event(conn, 0, c->window->subwindow, XCB_EVENT_MASK_KEY_PRESS,
-                   (char *)event);
+  if (binding != NULL) {
+    controller_run(controller, binding->cmd, binding->arg);
   }
 
-  xcb_flush(conn);
+  if (session->current_desktop->current_client != NULL) {
+    xcb_send_event(conn, 0,
+                   session->current_desktop->current_client->window->subwindow,
+                   XCB_EVENT_MASK_KEY_PRESS, (char *)event);
+  }
 }
 
 void handle_button_press(xcb_button_press_event_t *ev) {
   pointer_update_action(
       pointer, ev->detail == XCB_BUTTON_INDEX_1,
       ev->detail == XCB_BUTTON_INDEX_2, ev->detail == XCB_BUTTON_INDEX_3,
-      ev->state, session_find_client_by_xcb_window(session, ev->event)->window);
+      ev->state, session_find_client_by_xcb_window(session, ev->event)->window,
+      false);
+
+  PointerUpdateBind *pointer_action_bind = pointer_get_action_bind(
+      pointer, ev->detail == XCB_BUTTON_INDEX_1,
+      ev->detail == XCB_BUTTON_INDEX_2, ev->detail == XCB_BUTTON_INDEX_3,
+      ev->state, true);
+
+  if (pointer_action_bind != NULL) {
+    controller_run(controller, pointer_action_bind->cmd,
+                   pointer_action_bind->arg);
+  }
+
   /*  if (ev->detail == XCB_BUTTON_INDEX_1) {
+   *
       mouse_update_state(CLEANMASK(ev->state) == MODKEY
                              ? MOUSE_STATE_BUTTON1_DOWN_META
                              : MOUSE_STATE_BUTTON1_DOWN);
@@ -133,7 +147,18 @@ void handle_button_release(xcb_button_release_event_t *ev) {
   pointer_update_action(
       pointer, ev->detail == XCB_BUTTON_INDEX_1,
       ev->detail == XCB_BUTTON_INDEX_2, ev->detail == XCB_BUTTON_INDEX_3,
-      ev->state, session_find_client_by_xcb_window(session, ev->event)->window);
+      ev->state, session_find_client_by_xcb_window(session, ev->event)->window,
+      true);
+
+  PointerUpdateBind *pointer_action_bind = pointer_get_action_bind(
+      pointer, ev->detail == XCB_BUTTON_INDEX_1,
+      ev->detail == XCB_BUTTON_INDEX_2, ev->detail == XCB_BUTTON_INDEX_3,
+      ev->state, true);
+
+  if (pointer_action_bind != NULL) {
+    controller_run(controller, pointer_action_bind->cmd,
+                   pointer_action_bind->arg);
+  }
 
   /*  Client *c = session->current_monitor->current_desktop->selected_client;
 
@@ -199,9 +224,8 @@ void configure() {
   style->title_bar_text_padding_bottom = 6;
   style->title_bar_text_padding_left = 2;
   Arg arg = {.v = "/bin/st"};
-  scripting_run(scripting_engine,
-                "/home/filip/Projects/filipgorny/hotwm/cfg/wm/init.lua",
-                session);
+  scripting_run(scripting_context,
+                "/home/filip/Projects/filipgorny/hotwm/cfg/wm/init.lua");
 
   log_info("Config", "Configuration loaded");
 }
@@ -214,14 +238,19 @@ int main() {
   root = screen->root;
 
   session = session_start(screen);
-  actions_registry = action_create_registry();
 
   gui = gui_initialize(draw_init(conn, screen, &root));
   decorator = decorator_initialize(conn, screen);
 
   style = style_create();
 
-  scripting_engine = scripting_create_engine();
+  keymap = keymap_create();
+
+  pointer = pointer_initialize();
+
+  controller = controller_create();
+
+  scripting_context = scripting_create_context(controller, keymap, session);
 
   configure();
 

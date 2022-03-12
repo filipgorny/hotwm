@@ -1,8 +1,8 @@
 #include "scripting.h"
+#include "controller.h"
 #include "log.h"
 #include "session.h"
 
-#include <X11/keysym.h>
 #include <stdlib.h>
 
 #include <lauxlib.h>
@@ -10,91 +10,8 @@
 #include <lualib.h>
 #include <xcb/xproto.h>
 
-KeySymbol keysymbols[KEYSYMBOLS_LENGTH] = {{"a", XK_a},
-                                           {"b", XK_b},
-                                           {"c", XK_c},
-                                           {"d", XK_d},
-                                           {"e", XK_e},
-                                           {"f", XK_f},
-                                           {"g", XK_g},
-                                           {"h", XK_h},
-                                           {"i", XK_i},
-                                           {"j", XK_j},
-                                           {"k", XK_k},
-                                           {"l", XK_l},
-                                           {"m", XK_m},
-                                           {"n", XK_n},
-                                           {"o", XK_o},
-                                           {"p", XK_p},
-                                           {"q", XK_q},
-                                           {"r", XK_r},
-                                           {"s", XK_s},
-                                           {"t", XK_t},
-                                           {"u", XK_u},
-                                           {"v", XK_v},
-                                           {"w", XK_w},
-                                           {"x", XK_x},
-                                           {"y", XK_y},
-                                           {"z", XK_z},
-                                           {"1", XK_1},
-                                           {"2", XK_2},
-                                           {"3", XK_3},
-                                           {"4", XK_4},
-                                           {"5", XK_5},
-                                           {"6", XK_6},
-                                           {"7", XK_7},
-                                           {"8", XK_8},
-                                           {"9", XK_9},
-                                           {"0", XK_0},
-                                           {"F1", XK_F1},
-                                           {"F2", XK_F2},
-                                           {"F3", XK_F3},
-                                           {"F4", XK_F4},
-                                           {"F5", XK_F5},
-                                           {"F6", XK_F6},
-                                           {"F7", XK_F7},
-                                           {"F8", XK_F8},
-                                           {"F9", XK_F9},
-                                           {"F10", XK_F10},
-                                           {"F11", XK_F11},
-                                           {"F12", XK_F12},
-                                           {"R", XK_Return},
-                                           {"E", XK_Escape},
-                                           {"T", XK_Tab},
-                                           {"`", XK_grave},
-                                           {"-", XK_minus},
-                                           {"=", XK_equal},
-                                           {"[", XK_bracketleft},
-                                           {"]", XK_bracketright},
-                                           {"\\", XK_backslash},
-                                           {";", XK_semicolon},
-                                           {"'", XK_apostrophe},
-                                           {",", XK_comma},
-                                           {".", XK_period},
-                                           {"/", XK_slash},
-                                           {"space", XK_space},
-                                           {"up", XK_Up},
-                                           {"down", XK_Down},
-                                           {"left", XK_Left},
-                                           {"right", XK_Right},
-                                           {"home", XK_Home},
-                                           {"end", XK_End},
-                                           {"pageup", XK_Page_Up},
-                                           {"pagedown", XK_Page_Down},
-                                           {"insert", XK_Insert},
-                                           {"delete", XK_Delete},
-                                           {"backspace", XK_BackSpace},
-                                           {"enter", XK_Return},
-                                           {"tab", XK_Tab},
-                                           {"capslock", XK_Caps_Lock},
-                                           {"numlock", XK_Num_Lock},
-                                           {"scrolllock", XK_Scroll_Lock},
-                                           {"pause", XK_Pause},
-                                           {"printscreen", XK_Print}};
-
-ScriptingEngine *current_scripting_engine;
+ScriptingContext *current_context;
 lua_State *L;
-Session *current_session;
 
 #include "scripting_lib.h"
 
@@ -119,14 +36,17 @@ char *read_file(char *filename) {
   return buffer;
 }
 
-ScriptingEngine *scripting_create_engine() {
-  ScriptingEngine *engine = malloc(sizeof(ScriptingEngine));
-  engine->keybindings = NULL;
+ScriptingContext *scripting_create_context(Controller *controller,
+                                           Keymap *keymap, Session *session) {
+  ScriptingContext *context = malloc(sizeof(ScriptingContext));
+  context->controller = controller;
+  context->keymap = keymap;
+  context->session = session;
 
-  return engine;
+  return context;
 }
 
-void scripting_run(ScriptingEngine *engine, char *filename, Session *session) {
+void scripting_run(ScriptingContext *context, char *filename) {
   L = luaL_newstate();
   luaL_openlibs(L);
 
@@ -145,105 +65,18 @@ void scripting_run(ScriptingEngine *engine, char *filename, Session *session) {
   if (code != NULL) {
     log_info("Scripting", "Running file");
 
-    current_session = session;
-    current_scripting_engine = engine;
-
     if (luaL_loadstring(L, code) == LUA_OK) {
-      const int pcall = lua_pcall(L, 0, 0, 0);
-
-      if (pcall == LUA_OK) {
-        lua_pop(L, lua_gettop(L));
-      } else if (pcall == LUA_ERRRUN) {
-        log_error(lua_tostring(L, -1));
-
-        luaL_traceback(L, L, NULL, 1);
-        log_error(lua_tostring(L, -1));
-      }
-    }
-  }
-}
-
-void scripting_register_keybind(ScriptingEngine *engine, KeySymbol key,
-                                xcb_mod_mask_t modkey, int function) {
-  printf("Registering keybind\n");
-
-  Keybind *binding = malloc(sizeof(Keybind));
-  binding->key = key;
-  binding->function = function;
-  binding->next = NULL;
-  binding->mod = modkey;
-
-  Keybind *k = engine->keybindings;
-  printf("K: %d\n", k);
-
-  if (k == NULL) {
-    engine->keybindings = binding;
-
-    return;
-  }
-  printf("loop\n");
-  while (k) {
-    if (k->next == NULL) {
-      k->next = binding;
-
-      return;
-    }
-
-    k = k->next;
-  }
-
-  printf("After loop\n");
-}
-
-void scripting_handle_keypress(ScriptingEngine *engine, xcb_connection_t *conn,
-                               xcb_key_press_event_t *event) {
-
-  printf("Handling key press, key: %d, state: %d\n", event->detail,
-         event->state);
-
-  xcb_key_symbols_t *keysyms = xcb_key_symbols_alloc(conn);
-  xcb_keysym_t keysym;
-  keysym =
-      (!(keysyms) ? 0 : xcb_key_symbols_get_keysym(keysyms, event->detail, 0));
-
-  if (keysym == NULL) {
-    printf("[KEYBOARD] Unknown keysym\n");
-
-    return;
-  }
-
-  Keybind *k = engine->keybindings;
-
-  while (k) {
-    printf("Checking state %d\n", k->mod);
-    if (k->key.keysym == keysym && event->state == k->mod) {
-      printf("[KEYBOARD] Found keybind\n");
-
-      lua_rawgeti(L, LUA_REGISTRYINDEX, k->function);
+      current_context = context;
 
       const int pcall = lua_pcall(L, 0, 0, 0);
 
       if (pcall == LUA_OK) {
         lua_pop(L, lua_gettop(L));
       } else if (pcall == LUA_ERRRUN) {
-        log_error(lua_tostring(L, -1));
-
+        printf(lua_tostring(L, -1));
         luaL_traceback(L, L, NULL, 1);
-        log_error(lua_tostring(L, -1));
+        printf(lua_tostring(L, -1));
       }
-
-      return;
-    }
-
-    k = k->next;
-  }
-}
-
-KeySymbol scripting_get_keysymbol(char *symbol) {
-  for (int i = 0; i < sizeof(keysymbols) / sizeof(KeySymbol); i++) {
-    if (strcmp(keysymbols[i].symbol, symbol) == 0) {
-      printf("Found keysym %d\n", keysymbols[i].keysym);
-      return keysymbols[i];
     }
   }
 }
