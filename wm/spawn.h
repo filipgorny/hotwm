@@ -1,3 +1,3 @@
 #pragma once
 
-void spawn(char* process);
+void spawn(const char* process);

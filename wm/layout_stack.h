@@ -3,7 +3,7 @@
 
 void layout_stack_apply(Layout *layout, xcb_screen_t *screen, Client *clients, Client *current_client, Style *style) {
     printf("Applying stack layout\n");
-
+/*
   Client *c = clients;
   int total_clients = 0;
 
@@ -50,5 +50,5 @@ void layout_stack_apply(Layout *layout, xcb_screen_t *screen, Client *clients, C
     current_client->window->width = current_window_width;
     current_client->window->height = current_window_height;
 
-    window_update(current_client->window);
+    window_update(current_client->window);*/
 }

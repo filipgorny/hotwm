@@ -1,9 +1,14 @@
-wm.map_key("S-j", wm.next_client);
---wm.map_key("S-k", wm.prev_client);
---wm.map_key("S-s", function () wm.set_layout("stack") end);
---wm.map_key("S-m", function () wm.set_layout("mono") end);
+spawn.spawn("/bin/st")
 
-wm.spawn("/bin/st")
+style.set({
+    window_border_color = 0x00111111f,
+    margin = 32,
+    window_border_color = 0x00333333f,
+    title_bar_height = 32,
+    title_bar_text_padding_bottom = 6,
+    title_bar_text_padding_left = 2,
+    test1 = 2,
+    test2 = 3
+})
 
-current_window = 0;
---wm.map_pointer("S-1", function (window) current_window = window end);
+

@@ -1,8 +1,9 @@
 #include "spawn.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
-void spawn(char *process) {
+void spawn(const char *process) {
   printf("[SPAWN] Spawning %s\n", process);
 
   int status;

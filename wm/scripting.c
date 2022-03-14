@@ -4,6 +4,7 @@
 #include "session.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 #include <lauxlib.h>
 #include <lua.h>
@@ -12,8 +13,6 @@
 
 ScriptingContext *current_context;
 lua_State *L;
-
-#include "scripting_lib.h"
 
 char *read_file(char *filename) {
   FILE *file = fopen(filename, "r");
@@ -36,12 +35,10 @@ char *read_file(char *filename) {
   return buffer;
 }
 
-ScriptingContext *scripting_create_context(Controller *controller,
-                                           Keymap *keymap, Session *session) {
+ScriptingContext *scripting_create_context() {
   ScriptingContext *context = malloc(sizeof(ScriptingContext));
-  context->controller = controller;
-  context->keymap = keymap;
-  context->session = session;
+  context->bindings = NULL;
+  context->modules_count = 0;
 
   return context;
 }
@@ -50,15 +47,21 @@ void scripting_run(ScriptingContext *context, char *filename) {
   L = luaL_newstate();
   luaL_openlibs(L);
 
-  const struct luaL_Reg wmlib[] = {{"map_key", _wm_map_key},
-                                   {"next_client", _wm_next_client},
-                                   {"prev_client", _wm_prev_client},
-                                   {"set_layout", _wm_set_layout},
-                                   {"spawn", _wm_spawn},
-                                   {NULL, NULL}};
+  for (int i = 0; i < context->modules_count; i++) {
+    struct luaL_Reg mod[context->modules[i]->functions_count + 1];
 
-  luaL_newlib(L, wmlib);
-  lua_setglobal(L, "wm");
+    for (int ii = 0; ii < context->modules[i]->functions_count; ii++) {
+      mod[ii].name = context->modules[i]->functions[ii]->name;
+      mod[ii].func = context->modules[i]->functions[ii]->func;
+    }
+
+    mod[context->modules[i]->functions_count].name = NULL;
+    mod[context->modules[i]->functions_count].func = NULL;
+
+    luaL_newlib(L, mod);
+
+    lua_setglobal(L, context->modules[i]->name);
+  }
 
   char *code = read_file(filename);
 
@@ -79,4 +82,69 @@ void scripting_run(ScriptingContext *context, char *filename) {
       }
     }
   }
+}
+
+ScriptingModule *scripting_create_module(char *name) {
+  ScriptingModule *module = malloc(sizeof(ScriptingModule));
+  module->name = name;
+  module->functions_count = 0;
+
+  return module;
+}
+
+void scripting_declare_function(ScriptingModule *module, char *name,
+                                int (*func)(lua_State *L)) {
+  ScriptingFunction *function = malloc(sizeof(ScriptingFunction));
+  function->name = name;
+  function->func = func;
+
+  module->functions[module->functions_count] = function;
+  module->functions_count++;
+}
+
+void scripting_register_module(
+    ScriptingContext *context,
+    ScriptingModule *(*factory)(ScriptingContext *context)) {
+  ScriptingModule *module = factory(context);
+  context->modules[context->modules_count] = module;
+  context->modules_count++;
+}
+
+void scripting_declare_binding(ScriptingContext *context, char *name,
+                               void *value) {
+  ScriptingContextBinding *binding = malloc(sizeof(ScriptingContextBinding));
+  binding->name = name;
+  binding->value = value;
+  binding->next = NULL;
+
+  ScriptingContextBinding *b = context->bindings;
+
+  if (b == NULL) {
+    context->bindings = binding;
+  } else {
+    while (b->next) {
+      if (b->next == NULL) {
+        b->next = binding;
+
+        break;
+      }
+
+      b = b->next;
+    }
+  }
+}
+
+ScriptingContextBinding *scripting_get_binding(ScriptingContext *context,
+                                               char *name) {
+  ScriptingContextBinding *b = context->bindings;
+
+  while (b) {
+    if (strcmp(b->name, name) == 0) {
+      return b;
+    }
+
+    b = b->next;
+  }
+
+  return NULL;
 }

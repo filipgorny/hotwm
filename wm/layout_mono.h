@@ -19,10 +19,10 @@ void layout_mono_apply(Layout *layout, xcb_screen_t *screen, Client *clients, Cl
 
     current_client->window->hidden = false;
 
-    current_client->window->x = style->margin;
-    current_client->window->y  = style->margin;
-    current_client->window->width = screen->width_in_pixels - style->margin * 2;
-    current_client->window->height = screen->height_in_pixels - style->margin * 2;
+    current_client->window->x = style_get(style, "margin");
+    current_client->window->y  = style_get(style, "margin");
+    current_client->window->width = screen->width_in_pixels - style_get(style, "margin") * 2;
+    current_client->window->height = screen->height_in_pixels - style_get(style, "margin") * 2;
 
     window_update(current_client->window);
 }

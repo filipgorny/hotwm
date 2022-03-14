@@ -30,27 +30,34 @@ void decorator_decorate_window(Decorator *decorator, Window *window,
 
   // border
   draw_rect(window->draw, win, 0, 0, window->width, window->height,
-            style->window_border_color);
+            style_get(style, "window_border_color"));
 
   // title bar
-  draw_rect(window->draw, win, style->window_padding, style->window_padding,
-            window->width - style->window_padding * 2, style->title_bar_height,
-            style->title_bar_color);
+  draw_rect(window->draw, win, style_get(style, "window_padding"),
+            style_get(style, "window_padding"),
+            window->width - style_get(style, "window_padding") * 2,
+            style_get(style, "title_bar_height"),
+            style_get(style, "title_bar_color"));
 
   // title bar text
   draw_text(window->draw, win,
-            style->window_padding + style->title_bar_text_padding_left,
-            style->window_padding + style->title_bar_height -
-                style->title_bar_text_padding_bottom,
-            window->title, style->title_bar_text_color, style->title_bar_color,
-            "hack-24");
+            style_get(style, "window_padding") +
+                style_get(style, "title_bar_text_padding_left"),
+            style_get(style, "window_padding") +
+                style_get(style, "title_bar_height") -
+                style_get(style, "title_bar_text_padding_bottom"),
+            window->title, style_get(style, "title_bar_text_color"),
+            style_get(style, "title_bar_color"), "hack-24");
 
-  int subwindow_x = style->window_padding;
-  int subwindow_y =
-      style->title_bar_height + style->title_bar_margin + style->window_padding;
-  int subwindow_width = window->width - style->window_padding * 2;
-  int subwindow_height = window->height - style->window_padding * 2 -
-                         style->title_bar_height - style->title_bar_margin;
+  int subwindow_x = style_get(style, "window_padding");
+  int subwindow_y = style_get(style, "title_bar_height") +
+                    style_get(style, "title_bar_margin") +
+                    style_get(style, "window_padding");
+  int subwindow_width = window->width - style_get(style, "window_padding") * 2;
+  int subwindow_height = window->height -
+                         style_get(style, "window_padding") * 2 -
+                         style_get(style, "title_bar_height") -
+                         style_get(style, "title_bar_margin");
 
   xcb_configure_window(window->conn, window->subwindow,
                        XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,

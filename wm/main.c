@@ -4,6 +4,7 @@
 #include "gui.h"
 #include "keymap.h"
 #include "log.h"
+#include "manager.h"
 #include "pointer.h"
 #include "scripting.h"
 #include "session.h"
@@ -30,6 +31,7 @@ ScriptingContext *scripting_context;
 Pointer *pointer;
 Keymap *keymap;
 Controller *controller;
+Manager *manager;
 
 xcb_connection_t *conn;
 const xcb_setup_t *setup;
@@ -75,13 +77,17 @@ void handle_map_request(xcb_window_t window) {
   Client *c = client_create(w);
 
   session_add_client(session, c);
+  printf("Before window type\n");
+  int window_type = 1; // manager_detect_window_type(manager, w);
 
   session->current_desktop->current_client = c;
 
   c->name = w->title = window_find_name(w);
-  printf("WINDOW TITLE : %s\n", w->title);
-  decorator_decoration_init(decorator, w);
-  decorator_decorate_window(decorator, w, style);
+
+  if (window_type > 0 && window_type < 10) {
+    decorator_decoration_init(decorator, w);
+    decorator_decorate_window(decorator, w, style);
+  }
 
   refresh();
 }
@@ -207,23 +213,31 @@ void handle_property_change(xcb_property_notify_event_t *event) {
   }
 }
 
+#include "modules/spawn_module.h"
+#include "modules/style_module.h"
+
 void configure() {
   session_add_layout(session, layout_create("mono", layout_mono_apply));
   session_add_layout(session, layout_create("stack", layout_stack_apply));
 
   session_select_layout(session, "mono");
+  /*
+    style->gap = 8;
+    style->margin = 32;
+    style->title_bar_color = 0x00111111f;
+    style->title_bar_text_color = 0x00fffffff;
+    style->window_border_color = 0x00333333f;
+    style->title_bar_height = 32;
+    style->window_padding = 1;
+    style->title_bar_margin = 1;
+    style->title_bar_text_padding_bottom = 6;
+    style->title_bar_text_padding_left = 2;
+  */
 
-  style->gap = 8;
-  style->margin = 32;
-  style->title_bar_color = 0x00111111f;
-  style->title_bar_text_color = 0x00fffffff;
-  style->window_border_color = 0x00333333f;
-  style->title_bar_height = 32;
-  style->window_padding = 1;
-  style->title_bar_margin = 1;
-  style->title_bar_text_padding_bottom = 6;
-  style->title_bar_text_padding_left = 2;
-  Arg arg = {.v = "/bin/st"};
+  scripting_declare_binding(scripting_context, "style", &style);
+  scripting_register_module(scripting_context, module_style);
+  scripting_register_module(scripting_context, module_spawn);
+
   scripting_run(scripting_context,
                 "/home/filip/Projects/filipgorny/hotwm/cfg/wm/init.lua");
 
@@ -250,8 +264,9 @@ int main() {
 
   controller = controller_create();
 
-  scripting_context = scripting_create_context(controller, keymap, session);
+  manager = manager_initialize();
 
+  scripting_context = scripting_create_context(controller, keymap, session);
   configure();
 
   int values[3];

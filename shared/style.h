@@ -5,6 +5,11 @@
 #include <sys/types.h>
 
 typedef struct {
+    const char* name;
+    int value;
+} StyleValue;
+
+typedef struct {
     int gap;
     int margin;
     COLOR title_bar_color;
@@ -15,6 +20,13 @@ typedef struct {
     int title_bar_margin;
     int title_bar_text_padding_bottom;
     int title_bar_text_padding_left;
+} StyleOld;
+
+typedef struct {
+    int values_count;
+    StyleValue* values[];
 } Style;
 
 Style *style_create();
+void style_define(Style *style, const char *name, const int value);
+int style_get(Style *style, const char *name);
