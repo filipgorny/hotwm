@@ -234,7 +234,12 @@ void configure() {
     style->title_bar_text_padding_left = 2;
   */
 
-  scripting_declare_binding(scripting_context, "style", &style);
+  // @TODO fix colors in scripts
+  style_define(style, "title_bar_color", 0x00111111f);
+  style_define(style, "title_bar_text_color", 0x00fffffff);
+  style_define(style, "window_border_color", 0x00333333f);
+
+  scripting_declare_binding(scripting_context, "style", style);
   scripting_register_module(scripting_context, module_style);
   scripting_register_module(scripting_context, module_spawn);
 

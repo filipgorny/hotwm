@@ -1,6 +1,8 @@
 #pragma once
 
-#define COLOR u_int32_t
+#define COLOR int
+
+#define NUMBER int
 
 #include <sys/types.h>
 
@@ -10,16 +12,16 @@ typedef struct {
 } StyleValue;
 
 typedef struct {
-    int gap;
-    int margin;
+    NUMBER gap;
+    NUMBER margin;
     COLOR title_bar_color;
     COLOR window_border_color;
     COLOR title_bar_text_color;
-    int title_bar_height;
-    int window_padding;
-    int title_bar_margin;
-    int title_bar_text_padding_bottom;
-    int title_bar_text_padding_left;
+    NUMBER title_bar_height;
+    NUMBER window_padding;
+    NUMBER title_bar_margin;
+    NUMBER title_bar_text_padding_bottom;
+    NUMBER title_bar_text_padding_left;
 } StyleOld;
 
 typedef struct {

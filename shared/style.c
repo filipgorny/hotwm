@@ -25,7 +25,6 @@ int style_get(Style *style, const char *name) {
   for (int i = 0; i < style->values_count; i++) {
     if (style->values[i]->name != NULL &&
         strcmp(style->values[i]->name, name) == 0) {
-
       return style->values[i]->value;
     }
   }
