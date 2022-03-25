@@ -59,6 +59,8 @@ Client *session_find_client_by_xcb_window(Session *session,
   Client *c = session->current_desktop->clients;
 
   while (c) {
+		printf("%d - %d\n", c->window, window);
+
     if (c->window->window == window || c->window->subwindow == window) {
       return c;
     }

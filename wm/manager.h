@@ -22,24 +22,16 @@
 #define WINDOW_TYPE_COMBO 91
 #define WINDOW_TYPE_DND 92
 
-#define MANAGER_STATE_IDLE 0
-#define MANAGER_STATE_RESIZING 1
-#define MANAGER_STATE_MOVING 2
-
-typedef struct {
-    Window win;
-    int x, y;
-    int offset_x, offset_y;
-    int width, height;
-    int state_from, state_to;
-} ManagerLastStateChange;
-
 typedef struct {
     xcb_connection_t *conn;
     xcb_ewmh_connection_t *ewmh;
-    int state;
-    ManagerLastStateChange *last_state_change;
+		int drag_offset_x, drag_offset_y;
+		Window* dragging;
 } Manager;
 
 Manager *manager_initialize();
 int manager_detect_window_type(Manager *manager, Window *window);
+
+void manager_start_dragging(Manager *manager, Window *window, int offset_x, int offset_y);
+void manager_stop_dragging(Manager *manager);
+void manager_drag(Manager *manager, int x, int y);

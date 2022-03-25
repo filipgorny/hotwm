@@ -5,6 +5,7 @@
 #include "keymap.h"
 #include "log.h"
 #include "manager.h"
+#include "pointer.h"
 #include "scripting.h"
 #include "session.h"
 #include "spawn.h"
@@ -27,6 +28,7 @@ Gui *gui;
 Decorator *decorator;
 Style *style;
 ScriptingContext *scripting_context;
+Pointer *pointer;
 Keymap *keymap;
 Controller *controller;
 Manager *manager;
@@ -105,24 +107,22 @@ void handle_key_press(xcb_key_press_event_t *event) {
 }
 
 void handle_button_press(xcb_button_press_event_t *ev) {
-	if (ev->event) {
-		printf("There is target event (window)\n");
-	}
+  pointer_update_action(
+      pointer, ev->detail == XCB_BUTTON_INDEX_1,
+      ev->detail == XCB_BUTTON_INDEX_2, ev->detail == XCB_BUTTON_INDEX_3,
+      ev->state, session_find_client_by_xcb_window(session, ev->event)->window,
+      false);
 
-	if (ev->detail == XCB_BUTTON_INDEX_1) {
-		Client *target_client = session_find_client_by_xcb_window(session, ev->event);
+  PointerUpdateBind *pointer_action_bind = pointer_get_action_bind(
+      pointer, ev->detail == XCB_BUTTON_INDEX_1,
+      ev->detail == XCB_BUTTON_INDEX_2, ev->detail == XCB_BUTTON_INDEX_3,
+      ev->state, true);
 
-		if (target_client) {
-			Window *target_window = session_find_client_by_xcb_window(session, ev->event)->window;
+  if (pointer_action_bind != NULL) {
+    controller_run(controller, pointer_action_bind->cmd,
+                   pointer_action_bind->arg);
+  }
 
-			if (target_window) {
-
-				printf("Found window to dragg\n");
-
-				manager_start_dragging(manager, target_window, ev->event_x, ev->event_y);
-			}
-		}
-	}
   /*  if (ev->detail == XCB_BUTTON_INDEX_1) {
    *
       mouse_update_state(CLEANMASK(ev->state) == MODKEY
@@ -150,8 +150,23 @@ void handle_button_press(xcb_button_press_event_t *ev) {
 }
 
 void handle_button_release(xcb_button_release_event_t *ev) {
-	manager_stop_dragging(manager);
-    /*  Client *c = session->current_monitor->current_desktop->selected_client;
+  pointer_update_action(
+      pointer, ev->detail == XCB_BUTTON_INDEX_1,
+      ev->detail == XCB_BUTTON_INDEX_2, ev->detail == XCB_BUTTON_INDEX_3,
+      ev->state, session_find_client_by_xcb_window(session, ev->event)->window,
+      true);
+
+  PointerUpdateBind *pointer_action_bind = pointer_get_action_bind(
+      pointer, ev->detail == XCB_BUTTON_INDEX_1,
+      ev->detail == XCB_BUTTON_INDEX_2, ev->detail == XCB_BUTTON_INDEX_3,
+      ev->state, true);
+
+  if (pointer_action_bind != NULL) {
+    controller_run(controller, pointer_action_bind->cmd,
+                   pointer_action_bind->arg);
+  }
+
+  /*  Client *c = session->current_monitor->current_desktop->selected_client;
 
      if (c) {
        if (mouse_get_state() == MOUSE_STATE_BUTTON1_DOWN_META) {
@@ -167,10 +182,8 @@ void handle_button_release(xcb_button_release_event_t *ev) {
 }
 
 void handle_mouse_motion(xcb_motion_notify_event_t *event) {
-	if (manager->dragging) {
-		manager->dragging->x = event->event_x;
-		manager->dragging->y = event->event_y;
-	}
+  pointer_update_cords(pointer, event->event_x, event->event_y);
+
   /*  mouse_update_cords(event->root_x, event->root_y);
 
     Client *c = session->current_monitor->current_desktop->selected_client;
@@ -251,6 +264,8 @@ int main() {
   style = style_create();
 
   keymap = keymap_create();
+
+  pointer = pointer_initialize();
 
   controller = controller_create();
 

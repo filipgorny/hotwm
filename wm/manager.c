@@ -1,4 +1,5 @@
 #include "manager.h"
+#include "window.h"
 
 #include <xcb/xcb.h>
 #include <xcb/xcb_ewmh.h>
@@ -7,8 +8,26 @@ Manager *manager_initialize(xcb_connection_t *conn) {
   Manager *manager = malloc(sizeof(Manager));
   manager->conn = conn;
   manager->ewmh = calloc(1, sizeof(xcb_ewmh_connection_t));
+	manager->dragging = NULL;
 
   return manager;
+}
+
+void manager_start_dragging(Manager *manager, Window *window, int offset_x, int offset_y) {
+	manager->dragging = window;
+	manager->drag_offset_x = offset_x;
+	manager->drag_offset_y = offset_y;
+}
+
+void manager_stop_dragging(Manager *manager) {
+	manager->dragging = NULL;
+}
+
+void manager_drag(Manager *manager, int x, int y) {
+	manager->dragging->x = x - manager->drag_offset_x;
+	manager->dragging->y = y - manager->drag_offset_y;
+
+	window_update(manager->dragging);
 }
 
 int manager_detect_window_type(Manager *manager, Window *window) {
