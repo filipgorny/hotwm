@@ -154,6 +154,7 @@ void handle_button_release(xcb_button_release_event_t *ev) {
     /*  Client *c = session->current_monitor->current_desktop->selected_client;
 
      if (c) {
+     j
        if (mouse_get_state() == MOUSE_STATE_BUTTON1_DOWN_META) {
          if (c->is_floating) {
            c->x = c->x - c->display_offset_x;

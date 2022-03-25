@@ -3,8 +3,8 @@
 
 void layout_stack_apply(Layout *layout, xcb_screen_t *screen, Client *clients, Client *current_client, Style *style) {
     printf("Applying stack layout\n");
-/*
-  Client *c = clients;
+
+    Client *c = clients;
   int total_clients = 0;
 
     while (c) {
@@ -17,7 +17,7 @@ void layout_stack_apply(Layout *layout, xcb_screen_t *screen, Client *clients, C
         return;
     }
 
-    int stack_window_height = (screen->height_in_pixels - style->margin * 2) / total_clients - style->gap;
+    int stack_window_height = (screen->height_in_pixels - style->margin * 2) / total_clients;
     int stack_window_width = 1.618 * (screen->width_in_pixels - 2 * style->margin);
 
     int stack_index = 0;
