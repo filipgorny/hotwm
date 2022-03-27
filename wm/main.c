@@ -105,90 +105,33 @@ void handle_key_press(xcb_key_press_event_t *event) {
 }
 
 void handle_button_press(xcb_button_press_event_t *ev) {
-	if (ev->event) {
-		printf("There is target event (window)\n");
-	}
+  if (ev->detail == XCB_BUTTON_INDEX_1 && ev->state == XCB_MOD_MASK_1) {
+    Client *target_client =
+        session_find_client_by_xcb_window(session, ev->child);
 
-	if (ev->detail == XCB_BUTTON_INDEX_1) {
-		Client *target_client = session_find_client_by_xcb_window(session, ev->event);
+    if (target_client) {
+      Window *target_window = target_client->window;
 
-		if (target_client) {
-			Window *target_window = session_find_client_by_xcb_window(session, ev->event)->window;
-
-			if (target_window) {
-
-				printf("Found window to dragg\n");
-
-				manager_start_dragging(manager, target_window, ev->event_x, ev->event_y);
-			}
-		}
-	}
-  /*  if (ev->detail == XCB_BUTTON_INDEX_1) {
-   *
-      mouse_update_state(CLEANMASK(ev->state) == MODKEY
-                             ? MOUSE_STATE_BUTTON1_DOWN_META
-                             : MOUSE_STATE_BUTTON1_DOWN);
-    } else if (ev->detail == XCB_BUTTON_INDEX_2) {
-      mouse_update_state(CLEANMASK(ev->state) == MODKEY
-                             ? MOUSE_STATE_BUTTON2_DOWN_META
-                             : MOUSE_STATE_BUTTON2_DOWN);
-
-    } else if (ev->detail == XCB_BUTTON_INDEX_3) {
-      mouse_update_state(CLEANMASK(ev->state) == MODKEY
-                             ? MOUSE_STATE_BUTTON3_DOWN_META
-                             : MOUSE_STATE_BUTTON3_DOWN);
+      if (target_window) {
+        manager_start_dragging(manager, target_window,
+                               ev->event_x - target_window->x,
+                               ev->event_y - target_window->y);
+      }
     }
-
-    mouse_update_press_cords(ev->event_x, ev->event_y);
-
-    xcb_window_t window = ev->event;
-    Client *c = session_get_client_by_cords(ev->event_x, ev->event_y);
-
-    if (c) {
-      session_raise_client(c);
-    }*/
+  }
 }
 
 void handle_button_release(xcb_button_release_event_t *ev) {
-	manager_stop_dragging(manager);
-    /*  Client *c = session->current_monitor->current_desktop->selected_client;
-
-     if (c) {
-     j
-       if (mouse_get_state() == MOUSE_STATE_BUTTON1_DOWN_META) {
-         if (c->is_floating) {
-           c->x = c->x - c->display_offset_x;
-           c->y = c->y - c->display_offset_y;
-         }
-       }
-     }
-
-     mouse_update_state(MOUSE_STATE_FREE);
-   */
+  manager_stop_dragging(manager);
 }
 
 void handle_mouse_motion(xcb_motion_notify_event_t *event) {
-	if (manager->dragging) {
-		manager->dragging->x = event->event_x;
-		manager->dragging->y = event->event_y;
-	}
-  /*  mouse_update_cords(event->root_x, event->root_y);
+  if (manager->dragging) {
+    manager->dragging->x = event->event_x - manager->drag_offset_x;
+    manager->dragging->y = event->event_y - manager->drag_offset_y;
 
-    Client *c = session->current_monitor->current_desktop->selected_client;
-
-    if (c) {
-      if (mouse_get_state() == MOUSE_STATE_BUTTON1_DOWN_META) {
-        if (!c->is_floating) {
-          c->is_floating = 1;
-        }
-
-        c->display_offset_x = mouse_get_press_cords_x() - event->root_x;
-        c->display_offset_y = mouse_get_press_cords_y() - event->root_y;
-
-        update_client_geometry(c);
-        redraw();
-      }
-    }*/
+    window_update(manager->dragging);
+  }
 }
 
 void handle_property_change(xcb_property_notify_event_t *event) {

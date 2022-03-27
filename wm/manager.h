@@ -25,8 +25,8 @@
 typedef struct {
     xcb_connection_t *conn;
     xcb_ewmh_connection_t *ewmh;
-		int drag_offset_x, drag_offset_y;
-		Window* dragging;
+	int drag_offset_x, drag_offset_y;
+	Window* dragging;
 } Manager;
 
 Manager *manager_initialize();
