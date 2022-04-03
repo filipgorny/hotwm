@@ -1,5 +1,4 @@
 #include "display.h"
-#include "grid.h"
 #include <stdlib.h>
 
 #define GRID_RESOLUTION 16

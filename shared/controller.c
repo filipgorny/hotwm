@@ -16,6 +16,6 @@ void controller_run(Controller *controller, char *cmd, Arg arg) {
   printf("[Controller] CMD: '%s'\n", cmd);
 
   if (strcmp(cmd, "spawn") == 0) {
-    spawn(arg.v);
+    //    spawn(arg.v);
   }
 }

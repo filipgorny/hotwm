@@ -1,44 +1,42 @@
 #pragma once
 
+#include "arg.h"
 #include "draw.h"
+#include <xcb/xproto.h>
 
 #define color u_int32_t
 
 typedef struct {
-    int x, y;
-    int width, height;
-    color background;
-    color foreground;
-} Params;
-
-typedef struct {
-    char *name;
-    void (*draw_func)(Draw *draw, Params *params);
-} Type;
-
-typedef struct Definition Definition;
-struct Definition {
-    Type *type;
-    Definition *next;
-};
-
-typedef struct {
-    int x, y;
-    int width, height;
-    Type *type;
-} Element;
-
-typedef struct {
-    int x;
-    int y;
-    int width;
-    int height;
-} Container;
-
-typedef struct {
     Draw *draw;
-    Definition *definitions;
+    char* font;
 } Gui;
+
+typedef struct {
+    char* name;
+    Arg* value;
+} Property;
+
+typedef struct Element Element;
+struct Element {
+    char* type_name;
+    int x, y;
+    int width, height;
+    int meta_id;
+    void (*draw_func)(Gui *gui, Element *element, int offset_x, int offset_y);
+    Element* children;
+    Element* next;
+    Property* properties;
+    int num_properties;
+    xcb_window_t window;
+};
 
 Gui *gui_initialize(Draw *draw);
 
+void gui_draw_element(Gui *gui, Element *element);
+
+void gui_add_child(Element *parent, Element *child);
+void gui_remove_child(Element *parent, Element *child);
+void gui_remove_child_by_meta_id(Element *parent, int meta_id);
+
+Element *gui_container(Gui *gui, xcb_window_t window, int x, int y, int width, int height);
+Element *gui_button(Gui *gui, xcb_window_t window, int x, int y, int w, int h, char *label);

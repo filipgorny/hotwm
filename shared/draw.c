@@ -1,6 +1,8 @@
 #include "draw.h"
+#include "arg.h"
 #include <bits/stdint-uintn.h>
 #include <stdlib.h>
+#include <string.h>
 #include <xcb/xproto.h>
 
 Draw *draw_init(xcb_connection_t *conn, xcb_screen_t *screen,
@@ -38,12 +40,32 @@ void draw_text(Draw *draw, xcb_window_t window, int x, int y, const char *text,
   xcb_font_t font_gc = xcb_generate_id(draw->conn);
   xcb_open_font(draw->conn, font_gc, strlen(font), font);
 
-  uint32_t *values_fonts[] = {font_gc};
+  uint32_t values_fonts[] = {font_gc};
 
   xcb_change_gc(draw->conn, draw->gc, XCB_GC_FONT, values_fonts);
 
-  xcb_close_font(draw->conn, font_gc);
+  xcb_char2b_t *r = NULL;
+  r = malloc(sizeof(xcb_char2b_t) * strlen(text));
+  for (int i = 0; i < strlen(text); i++) {
+    r[i].byte1 = 0;
+    r[i].byte2 = text[i];
+  }
 
-  xcb_image_text_8(draw->conn, strlen(text), window, draw->gc, x, y, text);
+  int height = 0;
+
+  xcb_query_text_extents_reply_t *reply = xcb_query_text_extents_reply(
+      draw->conn, xcb_query_text_extents(draw->conn, font_gc, 1, r), NULL);
+
+  if (reply) {
+
+    height = reply->font_ascent + reply->font_descent;
+  } else {
+    height = 20;
+  }
+
+  xcb_image_text_16(draw->conn, strlen(text), window, draw->gc, x, height + y,
+                    r);
+
   xcb_flush(draw->conn);
+  xcb_close_font(draw->conn, font_gc);
 }

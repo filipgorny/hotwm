@@ -1,6 +1,5 @@
 #pragma once
 
-#include "grid.h"
 #include <xcb/xcb.h>
 
 typedef struct {

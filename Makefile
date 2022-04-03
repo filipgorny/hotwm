@@ -1,6 +1,6 @@
 .POSIX:
 ALL_WARNING = -Wall -Wextra -pedantic
-ALL_LDFLAGS = -lxcb -lxcb-keysyms -llua $(LDFLAGS)
+ALL_LDFLAGS = -g -lxcb -lxcb-keysyms -lxcb-ewmh -lxcb-randr -llua $(LDFLAGS)
 ALL_CFLAGS = $(CPPFLAGS) $(CFLAGS) -std=c99 $(ALL_WARNING)
 PREFIX = /usr/local
 LDLIBS = -lm
@@ -11,9 +11,9 @@ BIN = bin
 OBJ = obj
 
 SRC_WM = wm
-SRC_BAR = bar
+SRC_PANEL = panel
+SRC_SV = sv
 SRC_SHARED = shared
-SRC_SV = sv 
 
 
 DEPS_WM = $(wildcard $(SRC_WM)/*.h) $(wildcard $(SRC_SHARED)/*.h)
@@ -23,10 +23,10 @@ OBJS_WM = $(patsubst $(SRCS_WM)/*.h, $(OBJ)/.o, $(SRCS_WM)) \
 			$(patsubst $(SRCS_SHARED)/*.h, $(OBJ)/.o, $(SRCS_SHARED))
 
 
-DEPS_BAR = $(wildcard $(SRC_BAR)/*.h) $(wildcard $(SRC_SHARED)/*.h)
-SRCS_BAR = $(wildcard $(SRC_BAR)/*.c) $(wildcard $(SRC_SHARED)/*.c)
+DEPS_PANEL = $(wildcard $(SRC_PANEL)/*.h) $(wildcard $(SRC_SHARED)/*.h)
+SRCS_PANEL = $(wildcard $(SRC_PANEL)/*.c) $(wildcard $(SRC_SHARED)/*.c)
 
-OBJS_BAR = $(patsubst $(SRCS_BAR)/*.h, $(OBJ)/.o, $(SRCS_BAR)) \
+OBJS_PANEL = $(patsubst $(SRCS_PANEL)/*.h, $(OBJ)/.o, $(SRCS_PANEL)) \
 			$(patsubst $(SRCS_SHARED)/*.h, $(OBJ)/.o, $(SRCS_SHARED))
 
 
@@ -38,7 +38,7 @@ OBJS_SV = $(patsubst $(SRCS_SV)/*.h, $(OBJ)/.o, $(SRCS_SV)) \
 
 INC = $(DEP)
 
-all: hotwm hotbar hotsv
+all: wm panel session
 
 install: all
 	mkdir -p $(DESTDIR)$(BINDIR)
@@ -48,20 +48,21 @@ install: all
 	chmod 755 $(DESTDIR)$(BINDIR)/main
 	chmod 644 $(DESTDIR)$(MANDIR)/man1/main.1
 
-$(OBJ)/*.o: $(SRC_WM)/*.c $(SRC_BAR)/*.c $(SRC_SV)/*.c $(SRC_SHARED)/*.c $(DEPS_WM)/*.h $(DEPS_BAR)/*.h $(DEPS_SV)/*.h $(DEPS_SHARED)/*.h
+$(OBJ)/*.o: $(SRC_WM)/*.c $(SRC_PANEL)/*.c $(SRC_SV)/*.c $(SRC_SHARED)/*.c $(DEPS_WM)/*.h $(DEPS_PANEL)/*.h $(DEPS_SV)/*.h $(DEPS_SHARED)/*.h
 	$(CC) $(ALL_CFLAGS) -c $< -o $@
 
-hotwm: $(OBJS_WM)
-	$(CC) $(ALL_LDFLAGS) $(OBJS_WM) $(LDLIBS) -I$(SRC_SHARED) -I$(SRC_WM) -o $(BIN)/hotwm
+wm: $(OBJS_WM)
+	$(CC) $(ALL_LDFLAGS) $(OBJS_WM) $(LDLIBS) -I$(SRC_SHARED) -I$(SRC_WM) -o $(BIN)/wm
 
-hotbar: $(OBJS_BAR)
-	$(CC) $(ALL_LDFLAGS) $(OBJS_BAR) $(LDLIBS) -I$(SRC_SHARED) -I$(SRC_BAR) -o $(BIN)/hotbar
+panel: $(OBJS_PANEL)
+	$(CC) $(ALL_LDFLAGS) $(OBJS_PANEL) $(LDLIBS) -I$(SRC_SHARED) -I$(SRC_PANEL) -o $(BIN)/panel
 
-hotsv: $(OBJS_BAR)
-	$(CC) $(ALL_LDFLAGS) $(OBJS_BAR) $(LDLIBS) -I$(SRC_SHARED) -I$(SRC_SV) -o $(BIN)/hotsv
+session: $(OBJS_SV)
+	$(CC) $(ALL_LDFLAGS) $(OBJS_SV) $(LDLIBS) -I$(SRC_SHARED) -I$(SRC_SV) -o $(BIN)/session
 
 clean:
-	rm -f main *.o
+	rm -f bin/*
+	rm -f obj/*
 
 uninstall:
 	rm -f $(DESTDIR)$(BINDIR)/main
