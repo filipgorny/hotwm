@@ -13,7 +13,7 @@ typedef struct {
     xcb_window_t window;
     Task *tasks;
     int tasks_count;
-    Element *gui_container_tasks;
+    GuiElement *gui_container_tasks;
     int height;
     int padding;
 } Panel;

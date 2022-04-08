@@ -20,7 +20,7 @@ static unsigned int numlockmask = 0;
     Mod5Mask))
 
 InputConfig *input_create_config(xcb_connection_t *conn) {
-  InputConfig *config = malloc(sizeof(InputConfig));
+  InputConfig *config = (InputConfig *)malloc(sizeof(InputConfig));
   config->key_index = 0;
   config->conn = conn;
 
@@ -30,13 +30,13 @@ InputConfig *input_create_config(xcb_connection_t *conn) {
 void input_define_key(InputConfig *config, xcb_keysym_t keysym,
                       unsigned int modifiers, void (*func)(Arg *arg),
                       Arg *arg) {
-  Key *key = malloc(sizeof(Key));
+  Key *key = (Key *)malloc(sizeof(Key));
   key->keysym = keysym;
   key->modifiers = modifiers;
   key->func = func;
   key->action_name = NULL;
 
-  key->arg = malloc(sizeof(Arg));
+  key->arg = (Arg *)malloc(sizeof(Arg));
   key->arg->v = arg->v;
   key->arg->i = arg->i;
 
@@ -85,13 +85,13 @@ void input_config_free(InputConfig *config) {}
 void input_define_key_action(InputConfig *config, xcb_keysym_t keysym,
                              unsigned int modifiers, char *action_name) {
 
-  Key *key = malloc(sizeof(Key));
+  Key *key = (Key *)malloc(sizeof(Key));
   key->keysym = keysym;
   key->modifiers = modifiers;
   key->func = NULL;
   key->action_name = action_name;
 
-  key->arg = malloc(sizeof(Arg));
+  key->arg = (Arg *)malloc(sizeof(Arg));
 
   config->keys[config->key_index++] = key;
 }

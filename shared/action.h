@@ -1,5 +1,10 @@
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #include "arg.h"
 
 #define ACTION_METHOD void (*method)(Arg *)
@@ -23,3 +28,9 @@ Action * action_create();
 
 void action_define(ActionsRegistry *registry, char* name, ACTION_METHOD);
 void action_execute(ActionsRegistry *registry, char* name);
+
+
+#ifdef __cplusplus
+}
+#endif
+

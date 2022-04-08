@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "window.h"
 
 #include "stdbool.h"
@@ -23,4 +27,8 @@ struct Client {
 
 Client *client_create(Window *window);
 
+
+#ifdef __cplusplus
+}
+#endif
 

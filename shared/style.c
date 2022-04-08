@@ -5,14 +5,14 @@
 #include <string.h>
 
 Style *style_create() {
-  Style *style = malloc(sizeof(Style));
+  Style *style = (Style *)malloc(sizeof(Style));
   style->values_count = 0;
 
   return style;
 }
 
 void style_define(Style *style, const char *name, const int value) {
-  StyleValue *style_value = malloc(sizeof(StyleValue));
+  StyleValue *style_value = (StyleValue *)malloc(sizeof(StyleValue));
   style_value->name = name;
   style_value->value = value;
 

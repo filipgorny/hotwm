@@ -92,7 +92,7 @@ KeySymbol keysymbols[KEYSYMBOLS_LENGTH] = {{"a", XK_a},
                                            {"printscreen", XK_Print}};
 
 Keymap *keymap_create() {
-  Keymap *keymap = malloc(sizeof(Keymap));
+  Keymap *keymap = (Keymap *)malloc(sizeof(Keymap));
   keymap->keybinds = NULL;
 
   return keymap;
@@ -107,7 +107,7 @@ void keymap_bind(Keymap *keymap, char *key, char *cmd, Arg arg) {
 
   for (i = 0; i < strlen(key); i++) {
     if (enable_character_lookup) {
-      key_char = malloc(strlen(key) - i + 1);
+      key_char = (char *)malloc(strlen(key) - i + 1);
 
       for (ii = i; ii < strlen(key); ii++) {
         key_char[ii - i] = key[ii];
@@ -130,7 +130,7 @@ void keymap_bind(Keymap *keymap, char *key, char *cmd, Arg arg) {
   if (enable_character_lookup) {
     for (i = 0; i < KEYSYMBOLS_LENGTH; i++) {
       if (strcmp(keysymbols[i].symbol, key_char) == 0) {
-        Keybind *keybind = malloc(sizeof(Keybind));
+        Keybind *keybind = (Keybind *)malloc(sizeof(Keybind));
         keybind->key = keysymbols[i];
         keybind->cmd = cmd;
         keybind->arg = arg;

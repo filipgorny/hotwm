@@ -5,21 +5,21 @@
 #include <string.h>
 
 ActionsRegistry *action_create_registry() {
-  ActionsRegistry *a = malloc(sizeof(ActionsRegistry));
+  ActionsRegistry *a = (ActionsRegistry *)malloc(sizeof(ActionsRegistry));
   a->actions_length = 0;
 
   return a;
 }
 
 Action *action_create() {
-  Action *a = malloc(sizeof(Action));
+  Action *a = (Action *)malloc(sizeof(Action));
   a->name = "";
   a->method = NULL;
 
   return a;
 }
 
-void action_define(ActionsRegistry *registry, char *name, void (*func)()) {
+void action_define(ActionsRegistry *registry, char *name, void (*func)(Arg *)) {
   Action *a = action_create();
   a->name = name;
   a->method = func;

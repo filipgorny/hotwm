@@ -9,7 +9,7 @@
 #include <xcb/xcb_icccm.h>
 #include <xcb/xproto.h>
 
-#define EWMH_ENABLED 0
+#define EWMH_ENABLED 1
 
 Task *tasks_get_all(xcb_connection_t *conn, xcb_window_t root,
                     xcb_ewmh_connection_t *ewmh, int screen_number) {
@@ -24,7 +24,8 @@ Task *tasks_get_all(xcb_connection_t *conn, xcb_window_t root,
 
   if (EWMH_ENABLED &&
       xcb_ewmh_get_client_list_reply(ewmh, cookie, &winlist, NULL)) {
-    windows_list = malloc(sizeof(xcb_window_t) * winlist.windows_len);
+    windows_list =
+        (xcb_window_t *)malloc(sizeof(xcb_window_t) * winlist.windows_len);
     windows_count = winlist.windows_len;
 
     for (int i = 0; i < winlist.windows_len; i++) {
@@ -55,11 +56,11 @@ Task *tasks_get_all(xcb_connection_t *conn, xcb_window_t root,
       return NULL;
     }
 
-    xcb_window_t *value = xcb_get_property_value(reply);
+    xcb_window_t *value = (xcb_window_t *)xcb_get_property_value(reply);
     int value_size = xcb_get_property_value_length(reply);
     windows_count = value_size / sizeof(xcb_window_t);
 
-    windows_list = malloc(sizeof(xcb_window_t) * windows_count);
+    windows_list = (xcb_window_t *)malloc(sizeof(xcb_window_t) * windows_count);
 
     for (int i = 0; i < windows_count; i++) {
       windows_list[i] = value[i];
@@ -72,7 +73,7 @@ Task *tasks_get_all(xcb_connection_t *conn, xcb_window_t root,
   xcb_ewmh_get_utf8_strings_reply_t ewmh_txt_prop;
 
   for (int i = 0; i < windows_count; i++) {
-    Task *task = malloc(sizeof(Task));
+    Task *task = (Task *)malloc(sizeof(Task));
     task->next = NULL;
     task->name = "";
     task->window = windows_list[i];

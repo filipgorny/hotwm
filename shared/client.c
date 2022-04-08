@@ -5,7 +5,7 @@
 #include <stdlib.h>
 
 Client *client_create(Window *window) {
-  Client *client = malloc(sizeof(Client));
+  Client *client = (Client *)malloc(sizeof(Client));
   client->window = window;
   client->has_float_cords = false;
   client->name = "";

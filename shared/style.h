@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define COLOR int
 
 #define NUMBER int
@@ -32,3 +36,7 @@ typedef struct {
 Style *style_create();
 void style_define(Style *style, const char *name, const int value);
 int style_get(Style *style, const char *name);
+
+#ifdef __cplusplus
+}
+#endif

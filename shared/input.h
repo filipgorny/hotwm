@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xproto.h>
 #include "arg.h"
@@ -29,3 +33,8 @@ void input_define_key(InputConfig *config, xcb_keysym_t kesym, unsigned int modi
 void input_handle_key_event(InputConfig *config, ActionsRegistry *actions_registry, xcb_key_press_event_t *event);
 void input_config_free(InputConfig *config);
 void input_define_key_action(InputConfig *config, xcb_keysym_t kesym, unsigned int modifiers, char* action_name);
+
+#ifdef __cplusplus
+}
+#endif
+

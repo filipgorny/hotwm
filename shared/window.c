@@ -9,7 +9,7 @@
 
 Window *window_create(xcb_connection_t *conn, xcb_screen_t *screen,
                       xcb_window_t root, xcb_window_t window) {
-  Window *w = malloc(sizeof(Window));
+  Window *w = (Window *)malloc(sizeof(Window));
   w->conn = conn;
   w->subwindow = window;
   w->title = "";
@@ -65,7 +65,7 @@ char *window_find_name(Window *window) {
       xcb_get_property_reply(window->conn, cookie, NULL);
 
   if (reply) {
-    char *name = xcb_get_property_value(reply);
+    char *name = (char *)xcb_get_property_value(reply);
 
     if (name && !(name[0] == '\0')) {
       log_info("window", name);

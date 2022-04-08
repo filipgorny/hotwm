@@ -7,7 +7,7 @@
 #include <string.h>
 
 Controller *controller_create() {
-  Controller *controller = malloc(sizeof(Controller));
+  Controller *controller = (Controller *)malloc(sizeof(Controller));
 
   return controller;
 }

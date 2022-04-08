@@ -2,40 +2,70 @@
 #include "draw.h"
 #include "gui.h"
 
+#include <math.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <xcb/xproto.h>
+
+#include "toolkit.hpp"
 
 static int current_panel_id = 1;
 static Draw *draw;
 static Gui *gui;
 
 static void _add_task(Panel *panel, Task *task) {
-  printf("Adding new task\n");
+  printf("adding task - %s\n", task->name);
+
   if (panel->tasks == NULL) {
     panel->tasks = task;
-    printf("Added task\n");
-    return;
+  } else {
+    Task *current = panel->tasks;
+    while (current->next != NULL) {
+      current = current->next;
+    }
+    current->next = task;
   }
 
-  Task *current = panel->tasks;
-  while (current->next != NULL) {
-    current = current->next;
+  panel->tasks_count++;
+  printf("count = %d\n", panel->tasks_count);
+
+  int base_width;
+
+  if (panel->tasks_count > 4) {
+    base_width = panel->gui_container_tasks->width / panel->tasks_count;
+  } else {
+    base_width = panel->gui_container_tasks->width / 4;
   }
-  printf("Adding task 2\n");
-  current->next = task;
 
-  int button_width = 80;
+  int button_width = floor(base_width * 0.6);
+  int button_left =
+      floor(base_width * (panel->tasks_count - 1) + base_width * 0.2);
 
-  Element *gui_button_task =
-      gui_button(gui, panel->window, panel->tasks_count * (button_width + 2), 0,
-                 button_width, panel->height - panel->padding * 2, task->name);
+  printf("container width = %d\n", panel->gui_container_tasks->width);
+  printf("base width = %d\n", base_width);
+  printf("button_left: %d\n", button_left);
+  printf("button_width: %d\n", button_width);
+
+  char *button_text;
+
+  if (task->name == NULL) {
+    button_text = "";
+  } else {
+    button_text = (char *)malloc(sizeof(char) * (strlen(task->name) + 1));
+    strcpy(button_text, task->name);
+  }
+
+  GuiElement *gui_button_task =
+      gui_button(gui, panel->window, button_left, 0, button_width,
+                 panel->height - panel->padding * 2, button_text);
 
   gui_button_task->meta_id = task->window;
 
   gui_add_child(panel->gui_container_tasks, gui_button_task);
 
-  panel->tasks_count++;
+  View view = toolkit_generate(panel->gui_container_tasks);
 }
 
 static void _remove_task(Panel *panel, Task *task) {
@@ -72,7 +102,7 @@ static void _remove_task(Panel *panel, Task *task) {
 
 Panel *panel_create(xcb_connection_t *conn, xcb_screen_t *screen,
                     xcb_window_t root, int x, int y, int w, int h, Draw *draw) {
-  Panel *p = malloc(sizeof(Panel));
+  Panel *p = (Panel *)malloc(sizeof(Panel));
   p->id = current_panel_id++;
   p->tasks_count = 0;
 
@@ -108,39 +138,40 @@ Panel *panel_create(xcb_connection_t *conn, xcb_screen_t *screen,
 
 void panel_update_tasks(Panel *panel, Task *tasks) {
   Task *task = tasks;
-  Task *panel_task;
+  Task *panel_task = panel->tasks;
 
   bool found = false;
 
-  while (task != NULL) {
-    found = false;
-    panel_task = panel->tasks;
+  // check if not present
+  if (panel->tasks == NULL) {
+    _add_task(panel, task);
+  } else {
+    while (task != NULL) {
+      found = false;
 
-    while (panel_task != NULL) {
-      if (panel_task->window == task->window) {
-        found = true;
+      while (panel_task != NULL) {
+        if (task->window == panel_task->window) {
+          found = true;
+        }
 
-        break;
+        panel_task = panel_task->next;
       }
 
-      panel_task = panel_task->next;
-    }
+      if (!found) {
+        _add_task(panel, task);
+      }
 
-    if (!found) {
-      _add_task(panel, task);
+      task = task->next;
     }
-
-    task = task->next;
   }
 
+  // check if removed
   while (panel_task != NULL) {
     found = false;
-    task = tasks;
 
     while (task != NULL) {
-      if (panel_task->window == task->window) {
+      if (task->window == panel_task->window) {
         found = true;
-
         break;
       }
 
@@ -149,8 +180,6 @@ void panel_update_tasks(Panel *panel, Task *tasks) {
 
     if (!found) {
       _remove_task(panel, panel_task);
-
-      break;
     }
 
     panel_task = panel_task->next;
@@ -158,5 +187,5 @@ void panel_update_tasks(Panel *panel, Task *tasks) {
 }
 
 void panel_draw_gui(Panel *panel) {
-  gui_draw_element(gui, panel->gui_container_tasks);
+  gui_draw_element(gui, panel->gui_container_tasks, 0, 0);
 }

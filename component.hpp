@@ -1,0 +1,5 @@
+namespace component {
+    class Component {
+
+    };
+};

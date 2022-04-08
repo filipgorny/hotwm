@@ -1,17 +1,36 @@
 [
   {
     "arguments": [
-      "/usr/bin/gcc",
+      "/usr/bin/g++",
+      "-x",
       "-c",
-      "-std=c99",
-      "-Ishared",
-      "-Iwm",
+      "-I./shared",
+      "-I./panel",
+      "-I./wm",
+      "-I./toolkit",
       "-o",
-      "bin/hotwm",
-      "wm/wm.c"
+      "./bin/panel",
+      "./panel/main.c"
     ],
     "directory": "/home/filip/Projects/filipgorny/hotwm",
-    "file": "/home/filip/Projects/filipgorny/hotwm/wm/wm.c",
-    "output": "/home/filip/Projects/filipgorny/hotwm/bin/hotwm"
+    "file": "/home/filip/Projects/filipgorny/hotwm/panel/main.c",
+    "output": "/home/filip/Projects/filipgorny/hotwm/bin/panel"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-x",
+      "-c",
+      "-I./shared",
+      "-I./panel",
+      "-I./wm",
+      "-I./toolkit",
+      "-o",
+      "./bin/panel",
+      "./panel/main.c"
+    ],
+    "directory": "/home/filip/Projects/filipgorny/hotwm",
+    "file": "/home/filip/Projects/filipgorny/hotwm/panel/main.c",
+    "output": "/home/filip/Projects/filipgorny/hotwm/bin/panel"
   }
 ]

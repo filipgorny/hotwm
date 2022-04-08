@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <bits/stdint-uintn.h>
 #include <sys/types.h>
 #include <xcb/xcb.h>
@@ -18,3 +22,7 @@ Draw *draw_init(xcb_connection_t *conn, xcb_screen_t *screen, xcb_drawable_t *ro
 
 void draw_rect(Draw *draw, xcb_window_t window, int x, int y, int w, int h, const uint32_t color);
 void draw_text(Draw *draw, xcb_window_t window, int x, int y, const char *text, const uint32_t color, const uint32_t background_color, char *font);
+
+#ifdef __cplusplus
+}
+#endif

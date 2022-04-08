@@ -6,23 +6,9 @@
 #include <string.h>
 #include <xcb/xproto.h>
 
-Gui *gui_initialize(Draw *draw) {
-  Gui *gui = malloc(sizeof(Gui));
-  gui->draw = draw;
-  gui->font = "Monospace 16";
-
-  return gui;
-}
-
-void gui_draw_element(Gui *gui, Element *element) {
-  element->draw_func(gui, element, 0, 0);
-}
-
-static Property *_get_prop(Element *element, char *name) {
-  printf("-* ELEMENT num prop %d\n", element->num_properties);
+static Property *_get_prop(GuiElement *element, char *name) {
 
   for (int i = 0; i < element->num_properties; i++) {
-    printf(" -- prop %s - %s\n", element->properties[i].name, name);
     if (strcmp(element->properties[i].name, name) == 0) {
       return &element->properties[i];
     }
@@ -31,24 +17,35 @@ static Property *_get_prop(Element *element, char *name) {
   return NULL;
 }
 
-static void _add_prop(Element *element, char *name, Arg arg) {
-  Property *p = malloc(sizeof(Property));
+static void _add_prop(GuiElement *element, char *name, Arg arg) {
+  Property *p = (Property *)malloc(sizeof(Property));
   p->name = name;
-  p->value = &arg;
+  p->value = arg;
 
   element->properties[element->num_properties] = *p;
   element->num_properties++;
 }
 
-void gui_add_child(Element *parent, Element *child) {
+Gui *gui_initialize(Draw *draw) {
+  Gui *gui = (Gui *)malloc(sizeof(Gui));
+  gui->draw = draw;
+  gui->font = "Monospace 16";
+
+  return gui;
+}
+
+void gui_draw_element(Gui *gui, GuiElement *element, int offset_x,
+                      int offset_y) {
+  element->draw_func(gui, element, offset_x, offset_y);
+}
+
+void gui_add_child(GuiElement *parent, GuiElement *child) {
   if (parent->children == NULL) {
-    printf("new children\n");
     parent->children = child;
 
     return;
   }
-  printf("adding children\n");
-  Element *current = parent->children;
+  GuiElement *current = parent->children;
 
   while (current->next != NULL) {
     if (current->next == child) {
@@ -64,11 +61,11 @@ void gui_add_child(Element *parent, Element *child) {
   }
 }
 
-void gui_remove_child(Element *parent, Element *child) {
+void gui_remove_child(GuiElement *parent, GuiElement *child) {
   if (parent->children == child) {
     parent->children = child->next;
   } else {
-    Element *current = parent->children;
+    GuiElement *current = parent->children;
 
     while (current->next != NULL) {
       if (current->next == child) {
@@ -84,8 +81,8 @@ void gui_remove_child(Element *parent, Element *child) {
   free(child);
 }
 
-void gui_remove_child_by_meta_id(Element *parent, int meta_id) {
-  Element *current = parent->children;
+void gui_remove_child_by_meta_id(GuiElement *parent, int meta_id) {
+  GuiElement *current = parent->children;
 
   while (current != NULL) {
     if (current->meta_id == meta_id) {
@@ -97,27 +94,24 @@ void gui_remove_child_by_meta_id(Element *parent, int meta_id) {
     current = current->next;
   }
 }
-static void _draw_container(Gui *gui, Element *element, int offset_x,
+static void _draw_container(Gui *gui, GuiElement *element, int offset_x,
                             int offset_y) {
   draw_rect(gui->draw, element->window, element->x + offset_x,
-            element->y + offset_y, element->width, element->height, 0x00ff0000);
+            element->y + offset_y, element->width, element->height, 0x00000000);
 
-  Element *child = element->children;
-  printf("drawing\n");
+  GuiElement *child = element->children;
+
   while (child != NULL) {
-    printf("drawing child\n");
-    if (child->draw_func != NULL) {
-      printf("child has draw func\n");
-      child->draw_func(gui, child, element->x, element->y);
-    }
+
+    gui_draw_element(gui, child, element->x, element->y);
 
     child = child->next;
   }
 }
 
-Element *gui_container(Gui *gui, xcb_window_t window, int x, int y, int width,
-                       int height) {
-  Element *element = malloc(sizeof(Element));
+GuiElement *gui_container(Gui *gui, xcb_window_t window, int x, int y,
+                          int width, int height) {
+  GuiElement *element = (GuiElement *)malloc(sizeof(GuiElement));
   element->type_name = "container";
   element->next = NULL;
   element->x = x;
@@ -128,12 +122,12 @@ Element *gui_container(Gui *gui, xcb_window_t window, int x, int y, int width,
   element->window = window;
   element->children = NULL;
   element->num_properties = 0;
-  element->properties = malloc(sizeof(Property) * 1);
+  element->properties = (Property *)malloc(sizeof(Property) * 1);
 
   return element;
 }
 
-static void _draw_button(Gui *gui, Element *element, int offset_x,
+static void _draw_button(Gui *gui, GuiElement *element, int offset_x,
                          int offset_y) {
   draw_rect(gui->draw, element->window, element->x + offset_x,
             element->y + offset_y, element->width, element->height, 0x00111111);
@@ -142,21 +136,18 @@ static void _draw_button(Gui *gui, Element *element, int offset_x,
             element->y + offset_y + 1, element->width - 2, element->height - 2,
             0x00333333);
 
-  printf("DRAWING BUTTON\n");
-
   Property *prop = _get_prop(element, "label");
 
   if (prop != NULL) {
-    printf("Drawing text\n");
     draw_text(gui->draw, element->window, element->x + offset_x,
-              element->y + offset_y, prop->value->v, 0x00ffffff, 0x00333333,
+              element->y + offset_y, prop->value.v, 0x00ffffff, 0x00333333,
               gui->font);
   }
 }
 
-Element *gui_button(Gui *gui, xcb_window_t window, int x, int y, int w, int h,
-                    char *label) {
-  Element *element = malloc(sizeof(Element));
+GuiElement *gui_button(Gui *gui, xcb_window_t window, int x, int y, int w,
+                       int h, char *label) {
+  GuiElement *element = (GuiElement *)malloc(sizeof(GuiElement));
   element->type_name = "button";
   element->next = NULL;
   element->x = x;
@@ -167,9 +158,12 @@ Element *gui_button(Gui *gui, xcb_window_t window, int x, int y, int w, int h,
   element->window = window;
   element->children = NULL;
   element->num_properties = 0;
-  element->properties = malloc(sizeof(Property) * 1);
+  element->properties = (Property *)malloc(sizeof(Property) * 1);
 
-  _add_prop(element, "label", (Arg){.v = label});
+  char *label_copy = (char *)malloc(sizeof(char) * strlen(label) + 1);
+  strcpy(label_copy, label);
+
+  _add_prop(element, "label", (Arg){.v = label_copy});
 
   return element;
 }
