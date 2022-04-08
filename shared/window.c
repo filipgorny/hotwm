@@ -39,13 +39,14 @@ Window *window_create(xcb_connection_t *conn, xcb_screen_t *screen,
 void window_update(Window *window) {
   xcb_window_t w = window->window;
 
-  xcb_configure_window(window->conn, w,
-                       XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
-                       (int[]){window->width, window->height});
+  int size[] = {window->width, window->height};
 
   xcb_configure_window(window->conn, w,
-                       XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y,
-                       (int[]){window->x, window->y});
+                       XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
+                       size);
+
+  xcb_configure_window(window->conn, w,
+                       XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, size);
 
   if (window->hidden) {
     xcb_unmap_window(window->conn, w);

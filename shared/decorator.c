@@ -60,14 +60,14 @@ void decorator_decorate_window(Decorator *decorator, Window *window,
                          style_get(style, "title_bar_height") -
                          style_get(style, "title_bar_margin");
 
-  xcb_configure_window(
-      window->conn, window->subwindow,
-      XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
-      (uint32_t[]){(uint32_t)subwindow_width, (uint32_t)subwindow_height});
-  xcb_configure_window(
-      window->conn, window->subwindow,
-      XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y,
-      (uint32_t[]){(uint32_t)subwindow_x, (uint32_t)subwindow_y});
+  uint32_t size[] = {(uint32_t)subwindow_x, (uint32_t)subwindow_y};
+
+  xcb_configure_window(window->conn, window->subwindow,
+                       XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
+                       size);
+
+  xcb_configure_window(window->conn, window->subwindow,
+                       XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, size);
 }
 
 void decorator_refresh(Decorator *decorator, Client *clients, Style *style) {

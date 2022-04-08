@@ -16,26 +16,34 @@ SRC_SV = sv
 SRC_SHARED = shared
 SRC_TOOLKIT = toolkit
 
-DEPS_WM = $(wildcard $(SRC_WM)/*.h) $(wildcard $(SRC_SHARED)/*.h)
-SRCS_WM = $(wildcard $(SRC_WM)/*.c) $(wildcard $(SRC_SHARED)/*.c)
+DEPS_WM = $(wildcard $(SRC_WM)/*.h) 
+SRCS_WM = $(wildcard $(SRC_WM)/*.c) 
 
-OBJS_WM = $(patsubst $(SRCS_WM)/*.h, $(OBJ)/.o, $(SRCS_WM)) \
-			$(patsubst $(SRCS_SHARED)/*.h, $(OBJ)/.o, $(SRCS_SHARED))
-
-
-DEPS_PANEL = $(wildcard $(SRC_PANEL)/*.h) $(wildcard $(SRC_SHARED)/*.h) $(wildcard $(SRC_TOOLKIT)/*.hpp)
-SRCS_PANEL = $(wildcard $(SRC_PANEL)/*.c) $(wildcard $(SRC_SHARED)/*.c) $(wildcard $(SRC_TOOLKIT)/*.cpp)
-
-OBJS_PANEL = $(patsubst $(SRCS_PANEL)/*.h, $(OBJ)/.o, $(SRCS_PANEL)) \
-			$(patsubst $(SRCS_SHARED)/*.h, $(OBJ)/.o, $(SRCS_SHARED)) \
-			$(patsubst $(SRCS_TOOLKIT)/*.hpp, $(OBJ)/.o, $(SRCS_SHARED))
+OBJS_WM = $(patsubst $(SRCS_WM)/%.h, $(OBJ)/%.o, $(SRCS_WM)) 
 
 
-DEPS_SV = $(wildcard $(SRC_SV)/*.h) $(wildcard $(SRC_SHARED)/*.h)
-SRCS_SV = $(wildcard $(SRC_SV)/*.c) $(wildcard $(SRC_SHARED)/*.c)
+DEPS_PANEL = $(wildcard $(SRC_PANEL)/*.h) 
+SRCS_PANEL = $(wildcard $(SRC_PANEL)/*.c) 
 
-OBJS_SV = $(patsubst $(SRCS_SV)/*.h, $(OBJ)/.o, $(SRCS_SV)) \
-			$(patsubst $(SRCS_SHARED)/*.h, $(OBJ)/.o, $(SRCS_SHARED))
+OBJS_PANEL = $(patsubst $(SRCS_PANEL)/%.h, $(OBJ)/%.o, $(SRCS_PANEL))
+
+
+DEPS_SV = $(wildcard $(SRC_SV)/*.h) 
+SRCS_SV = $(wildcard $(SRC_SV)/*.c) 
+
+OBJS_SV = $(patsubst $(SRCS_SV)/%.h, $(OBJ)/%.o, $(SRCS_SV))
+
+DEPS_TOOLKIT = $(wildcard $(SRC_TOOLKIT)/*.hpp)
+SRCS_TOOLKIT = $(wildcard $(SRC_TOOLKIT)/*.cpp) 
+
+OBJS_TOOLKIT = $(patsubst $(SRCS_TOOLKIT)/%.hpp, $(OBJ)/%.o, $(SRCS_TOOLKIT))
+
+
+DEPS_SHARED = $(wildcard $(SRC_SHARED)/*.h)
+SRCS_SHARED = $(wildcard $(SRC_SHARED)/*.c)
+
+OBJS_SHARED = $(patsubst $(SRCS_SHARED)/%.h, $(OBJ)/%.o, $(SRCS_SHARED))
+
 
 INC = $(DEP)
 
@@ -52,14 +60,14 @@ install: all
 	chmod 755 $(DESTDIR)$(BINDIR)/main
 	chmod 644 $(DESTDIR)$(MANDIR)/man1/main.1
 
-$(OBJ)/*.o: $(SRC_WM)/*.c $(SRC_PANEL)/*.c $(SRC_SV)/*.c $(SRC_SHARED)/*.c $(DEPS_WM)/*.h $(DEPS_PANEL)/*.h $(DEPS_SV)/*.h $(DEPS_SHARED)/*.h
-	$(CCC) $(ALL_CFLAGS) -c $< -o $@
+$(OBJ)/*.o: $(DEPS_WM) $(DEPS_PANEL) $(DEPS_SV) $(DEPS_SHARED) $(DEPS_TOOLKIT)
+	$(GCC) $(ALL_CFLAGS) -c $< -o $@
 
 wm: $(OBJS_WM)
-	$(CCC) $(ALL_LDFLAGS) $(OBJS_WM) $(LDLIBS) -I$(SRC_SHARED) -I$(SRC_WM) -o $(BIN)/wm
+	$(CCC) $(ALL_LDFLAGS) $(OBJS_WM) $(OBJS_SHARED) $(LDLIBS) -I$(SRC_SHARED) -I$(SRC_WM) -o $(BIN)/wm
 
-panel: $(OBJS_PANEL)
-	$(GCC) $(ALL_LDFLAGS) $(OBJS_PANEL) $(LDLIBS) -I$(SRC_SHARED) -I$(SRCS_TOOLKIT) -I$(SRC_PANEL) -o $(BIN)/panel
+panel: $(OBJS_PANEL) $(OBJS_TOOLKIT) $(OBJS_SHARED)
+	$(GCC) $(ALL_LDFLAGS) $(OBJS_PANEL) $(OBJS_SHARED) $(OBJS_TOOLKIT) $(LDLIBS) -I$(SRC_SHARED) -I$(SRC_TOOLKIT) -I$(SRC_PANEL) -o $(BIN)/panel
 
 session: $(OBJS_SV)
 	$(CC) $(ALL_LDFLAGS) $(OBJS_SV) $(LDLIBS) -I$(SRC_SHARED) -I$(SRC_SV) -o $(BIN)/session

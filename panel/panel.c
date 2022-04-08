@@ -65,7 +65,7 @@ static void _add_task(Panel *panel, Task *task) {
 
   gui_add_child(panel->gui_container_tasks, gui_button_task);
 
-  View view = toolkit_generate(panel->gui_container_tasks);
+  View view = toolkit_generate(*panel->gui_container_tasks);
 }
 
 static void _remove_task(Panel *panel, Task *task) {
