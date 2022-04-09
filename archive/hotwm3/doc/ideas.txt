@@ -1,2 +1,0 @@
-- semifloating manager - windows are stacking but you use keyboard for everything, like in tiliing mode
-- remember: its a mixed manager - we utilize the grid system 

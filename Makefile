@@ -33,7 +33,7 @@ SRCS_SV = $(wildcard $(SRC_SV)/*.c)
 
 OBJS_SV = $(patsubst $(SRCS_SV)/%.h, $(OBJ)/%.o, $(SRCS_SV))
 
-DEPS_TOOLKIT = $(wildcard $(SRC_TOOLKIT)/*.hpp)
+DEPS_TOOLKIT = $(wildcard $(SRC_TOOLKIT)/*.hpp) $(wildcard $(SRC_TOOLKIT)/*.h) 
 SRCS_TOOLKIT = $(wildcard $(SRC_TOOLKIT)/*.cpp) 
 
 OBJS_TOOLKIT = $(patsubst $(SRCS_TOOLKIT)/%.hpp, $(OBJ)/%.o, $(SRCS_TOOLKIT))

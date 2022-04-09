@@ -5,7 +5,7 @@
 #include "component.hpp"
 #include "definition.hpp"
 
-namespace ui {
+namespace view {
     struct View {
         component::Component *root;
     };

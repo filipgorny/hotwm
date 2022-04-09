@@ -4,15 +4,17 @@
 #include <stdbool.h>
 
 namespace component {
+    typedef union {
+         char* s;
+         int i;
+         float f;
+         bool b;
+    } StyleValueValue;
+
     struct StyleValue {
         char* name;
-        union {
-            char* s;
-            int i;
-            float f;
-            bool b;
-            bool isUndefined;
-        };
+        bool isUndefined;
+        StyleValueValue* value;
     };
 
     class Style {
@@ -24,12 +26,12 @@ namespace component {
 
                 StyleValue *v = new StyleValue();
                 v->name = name;
-                v->s = value;
-
-                this->values = (StyleValue*)realloc(this->values, sizeof(StyleValue) * (this->length + 1));
-
+                v->value = new StyleValueValue();
+                
+                v->value->s = value;
                 v->isUndefined = false;
 
+                this->values = (StyleValue*)realloc(this->values, sizeof(StyleValue) * (this->length + 1));
                 this->values[this->length] = *v;
 
                 this->length++;

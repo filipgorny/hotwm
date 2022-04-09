@@ -1,26 +1,32 @@
 #pragma once
 
-namespace component {
+#include <iostream>
+#include <string>
+
+#define COMPONENT_CONTAINER 100
+#define COMPONENT_BUTTON 101
+
+namespace definition {
     typedef union {
         char* c;
         int* i;
         float* f;
         bool *b;
-    } StyleDefValue;
+    } PropertyDefValue;
 
     typedef struct {
         char* name;
-        StyleDefValue value;
-    } StyleDef;
+        PropertyDefValue value;
+    } Property;
 
-    typedef struct ComponentDef ComponentDefiStruct;
-    struct ComponentDefStruct {
-        char* name;
-        ComponentDef *child;
-        StyleDef* style;
+    class ComponentDefinition {
+        private:
+            Property** properties;
+            int property_count;
+        public:
+            int type;
+            ComponentDefinition(int type);
+            void define(std::string name, PropertyDefValue value);
+            PropertyDefValue* get(std::string name);
     };
-
-    typedef struct {
-        ComponentDef *root;
-    } ViewDef;
 }

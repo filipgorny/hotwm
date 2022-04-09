@@ -1,15 +1,17 @@
 #pragma once
 
-#include "gui.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <functional>
+
 #include "view.hpp"
 #include "definition.hpp"
 
-using View = ui::View;
+#define COMPONENT_CREATION std::function<component::Component*(definition::ComponentDef*)> 
 
-extern "C" {
-    typedef View View;
-    typedef component::ViewDef ViewDef;
+typedef view::View View;
+typedef component::Component Component;
 
-    View toolkit_generate(GuiElement gui_element);
-}
+View* toolkit_generate_view();
 

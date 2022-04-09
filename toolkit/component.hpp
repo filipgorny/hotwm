@@ -1,6 +1,9 @@
+#pragma once
+
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "definition.hpp"
 #include "style.hpp"
 #include "tasks.h"
 #include "style.h"
@@ -24,5 +27,7 @@ namespace component {
             void onClick();
             void setOnClick(Callback callback);
             void setOnHover(Callback callback);
+           
+            static Component* create(definition::ComponentDefinition def);
     };
 };
